@@ -110,6 +110,5 @@ def test_cdda_is_on_the_audio_source_list():
 
 
 def test_a_system_with_no_disc_answers_not_ready_through_the_bus():
-    cd, cpu = machine(disc=None)
     cd2 = PcEngineCd(card_image(), None)
     assert cd2.unit.disc is None and cd2.unit.present
