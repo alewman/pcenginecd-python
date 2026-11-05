@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 from discs import disc_audio_then_data
-
 from pcengine_python import pads
+
 from pcenginecd_python import PcEngineCd
 
 BIOS = Path("/data/emu/share/batocera/bios/syscard3.pce")
