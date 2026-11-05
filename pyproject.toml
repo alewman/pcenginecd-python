@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pcenginecd-python"
+version = "0.0.0.dev0"
+description = "Readable, pure-Python PC Engine CD-ROM2 / Super CD-ROM2: pcengine-python plus the CD unit, System Card and SCSI drive, through the base board's sockets"
+readme = "README.md"
+# The floor is the newest Python PyPy supports (3.11 as of PyPy 7.3.20); raise it when PyPy does.
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "alewman" }]
+# The base board, pinned by git revision (a local repository). Nothing is copied from it.
+# 5befa54 = 009d1ee (M6 docs, issue 0001) plus the public-repository commits (26bb169, 5befa54).
+# It brings huc6280-python (a379416) with it. Repin deliberately and rerun the tests and the
+# boot runs (docs/m7-record.md).
+dependencies = [
+    "pcengine-python @ git+file:///data/emu/pcengine-python@5befa54d10f31ba03c14c81d6effff8ff2b4a64d",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    # Pinned: `ruff format --check` must see the formatter the tree was formatted with.
+    "ruff==0.16.8",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pcenginecd_python"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["runs", "tests/runs"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "PERF", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pcenginecd_python"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers -ra -m 'not slow'"
+pythonpath = ["src", "tests"]
+markers = ["slow: boots a disc for many emulated seconds (pytest -m slow)"]
