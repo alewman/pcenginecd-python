@@ -20,7 +20,7 @@ each is marked]:
 | `$1807` | subchannel byte (not modelled: 0) | D7 set **unlocks BRAM** |
 | `$1808` | the SCSI data bus; a read of data in pulses ACK | ADPCM address low |
 | `$1809` | -- | ADPCM address high |
-| `$180A-$180E` | ADPCM (register-level stand-in, no sound, M8) | ADPCM |
+| `$180A-$180E` | ADPCM stand-in (no sound, M8); `$180B` bit 1 = CD-to-ADPCM DMA | ADPCM |
 | `$180F` | the fader register | fade control |
 | `$18C0-$18C7` | the Super System Card id registers (answered by the card) | -- |
 
@@ -89,7 +89,7 @@ class _Adpcm:
             self.ram[self.write_ptr] = value
             self.write_ptr = (self.write_ptr + 1) & 0xFFFF
         elif reg == 0x0B:
-            self.dma = value & 0xFE  # bit 0 needs a transfer that is running (none: M8)
+            self.dma = value  # bit 0 is cleared by the unit when it sees no data (see CdUnit)
         elif reg == 0x0D:
             old, self.control = self.control, value
             if value & 0x02 and not old & 0x02:
@@ -130,6 +130,9 @@ class CdUnit:
     # [emu: Mesen2 `PceCdRom.cpp`, from its test ROMs] a second write to $1805 within this many
     # master clocks of the first is ignored (tier 5)
     CHANNEL_LATCH_GUARD = 700
+    # [emu: Mesen2 `PceAdpcm.cpp`, "verificator" test ROM: values 18 to 22 CPU-ticks pass, higher
+    # or lower fail; one tick = 3 master clocks] master clocks from REQ to the DMA taking the byte
+    DMA_BYTE_CLOCKS = 20 * 3
 
     grounds_cd = False  # the unit is not a card: the System Card grounds /CD
     present = True  # K7 low: the I/O port reports "CD unit attached" (C6 polarity)
@@ -154,6 +157,7 @@ class CdUnit:
         self.sample_latch = 0
         self._latch_guard_until = 0
         self._next_event: int | None = None
+        self._dma_at: int | None = None
         self.mclk = 0
 
     @property
@@ -184,9 +188,60 @@ class CdUnit:
 
     def catch_up(self, mclk: int) -> None:
         if self._next_event is None or mclk >= self._next_event:
-            self.bus.run_to(mclk)
-            self._next_event = self.bus.next_event()
+            self._run(mclk)
         self.mclk = mclk
+
+    def _run(self, mclk: int) -> None:
+        """Run the drive and the ADPCM DMA, event by event, up to `mclk`."""
+        bus = self.bus
+        while True:
+            at = bus.next_event()
+            if self._dma_at is not None and (at is None or self._dma_at <= at):
+                at = self._dma_at
+            if at is None or at > mclk:
+                break
+            bus.run_to(at)
+            if self._dma_at == at:
+                self._dma_at = None
+                self._dma_step()
+            self._dma_arm()
+        bus.run_to(mclk)
+        self._dma_arm()
+        self._next_event = self._soonest()
+
+    def _soonest(self) -> int | None:
+        at = self.bus.next_event()
+        if self._dma_at is not None and (at is None or self._dma_at < at):
+            return self._dma_at
+        return at
+
+    # -- CD to ADPCM DMA (AD_TRANS): `$180B` bits 1/0 [hw: pcetech 8, "no DMA to RAM ... only one
+    # sector at a time into ADPCM RAM"; the BIOS sets bit 1, polls `$180C` bit 2 and `$1803` bit 5].
+    # One byte at a time: the drive's data is taken while REQ is up in data in, then ACK pulses.
+
+    def _dma_arm(self) -> None:
+        bus = self.bus
+        if (
+            self.adpcm.dma & 0x03
+            and self._dma_at is None
+            and bus.req
+            and bus.io
+            and not bus.cd
+            and not bus.ack
+        ):
+            self._dma_at = bus.now + self.DMA_BYTE_CLOCKS
+
+    def _dma_step(self) -> None:
+        bus = self.bus
+        if not (self.adpcm.dma & 0x03 and bus.req and bus.io and not bus.cd and not bus.ack):
+            return
+        self.adpcm.ram[self.adpcm.write_ptr] = bus.read_data()
+        self.adpcm.write_ptr = (self.adpcm.write_ptr + 1) & 0xFFFF
+        bus.pulse_ack()
+        if not bus.out:
+            self.adpcm.dma &= (
+                ~0x01
+            )  # the sector is through (bit 1, the request, stays until cleared)
 
     # -- IRQ2 ------------------------------------------------------------------------------------
 
@@ -223,7 +278,8 @@ class CdUnit:
                 self.bram[address & 0x7FF] = value
         else:
             self._write_register(address & 0xFF, value, mclk)
-        self._next_event = self.bus.next_event()
+        self._dma_arm()
+        self._next_event = self._soonest()
 
     def _read_register(self, reg: int, mclk: int) -> int:
         bus = self.bus
@@ -248,7 +304,8 @@ class CdUnit:
             value = bus.read_data()
             if bus.req and bus.io and not bus.cd:
                 bus.pulse_ack()
-                self._next_event = bus.next_event()
+                self._dma_arm()
+                self._next_event = self._soonest()
             return value
         if 0x09 <= reg <= 0x0E:
             return self.adpcm.read(reg)
@@ -285,6 +342,8 @@ class CdUnit:
         elif reg == 0x07:
             self.bram_locked = not value & 0x80
         elif 0x08 <= reg <= 0x0E:
+            if reg == 0x0B and not bus.out:
+                value &= ~0x01  # bit 0 cannot be set when no data block is waiting [emu: Mesen2]
             self.adpcm.write(reg, value)
         elif reg == 0x0F:
             self.cdda.write_fade(value, mclk)

@@ -2,7 +2,7 @@ name: CI
 
 # Kept minimal (PyPy only, main and pull requests only, superseded runs cancelled). Local only
 # for now: the repository is not pushed. The base board is pinned by git revision (a local
-# repository today), so this file cannot run until both repositories are public.
+# file URL today), so this file cannot run until it is a public URL.
 on:
   push:
     branches: [main]

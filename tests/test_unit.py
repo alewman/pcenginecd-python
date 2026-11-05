@@ -133,3 +133,26 @@ def test_power_on_reset_locks_bram_and_clears_the_bus():
     h.command([0, 0, 0, 0, 0, 0])
     unit.reset(ResetKind.POWER_ON)
     assert unit.bram_locked and h.r(0) == 0 and not irq.level
+
+
+def test_adpcm_dma_moves_a_sector_from_the_drive_into_adpcm_ram():
+    # AD_TRANS: set the write pointer, send READ, set $180B bit 1, wait for the status phase
+    unit, _, h = make(disc_data_only())
+    h.w(8, 0x00)
+    h.w(9, 0x20)
+    h.w(0x0D, 0x02 | 0x01)  # write pointer = $2000
+    h.command([8, 0, 0, 4, 1, 0])
+    h.w(0x0B, 0x02)
+    h.wait(0xD8)  # the status phase: every byte was taken by the DMA, none by the CPU
+    assert bytes(unit.adpcm.ram[0x2000:0x2004]) == bytes([4, 5, 6, 7])
+    assert unit.adpcm.ram[0x2000 + 2047] == (4 + 2047) & 0xFF
+    assert unit.adpcm.write_ptr == 0x2000 + 2048
+    assert h.r(3) & 0x20  # the BIOS polls this bit
+    h.w(0x0B, 0x00)
+    assert h.finish() == (0, 0)
+
+
+def test_dma_bit0_cannot_be_set_without_a_waiting_block_and_bit1_survives():
+    unit, _, h = make(disc_data_only())
+    h.w(0x0B, 0x03)
+    assert unit.adpcm.dma == 0x02

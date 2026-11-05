@@ -50,6 +50,12 @@ def main() -> int:
     ap.add_argument(
         "--press-run-at", type=int, default=0, help="hold RUN from this frame (0: never)"
     )
+    ap.add_argument(
+        "--hold-frames", type=int, default=0, help="release RUN after this many frames (0: never)"
+    )
+    ap.add_argument(
+        "--press-again", default="", help="comma list of frames at which to tap RUN for 10 frames"
+    )
     a = ap.parse_args()
 
     from pcengine_python import pads
@@ -87,11 +93,18 @@ def main() -> int:
         board.pages.claim(0x1FF8, 0x1FF8, unit)
 
     system = cd.build()
+    taps = {int(x) for x in a.press_again.split(",") if x}
     shots = {int(x) for x in a.png_at.split(",") if x}
     began = time.monotonic()
     for frame in range(1, a.frames + 1):
         if a.press_run_at and frame == a.press_run_at:
             pad.pressed |= pads.RUN
+        if a.hold_frames and frame == a.press_run_at + a.hold_frames:
+            pad.pressed &= ~pads.RUN
+        if frame in taps:
+            pad.pressed |= pads.RUN
+        if frame - 10 in taps:
+            pad.pressed &= ~pads.RUN
         system.run_frame()
         if frame in shots:
             save_frame(board, a.out / f"frame{frame:05d}.pkl")
