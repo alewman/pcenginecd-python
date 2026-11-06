@@ -9,10 +9,10 @@ RAM, the `$1800-$180F` interface), the drive's **SCSI-class controller** (bus ph
 handshake, the System Card's command set), the **track table** from bin/cue (or a CHD through
 `chdman`) and **CD-DA** playback to the board's audio list.
 
-**Status (2026-11-05): Milestone 7, local only (no remote, no push).** See
-[docs/m7-record.md](docs/m7-record.md) for what was built, the judges, the boot results and the U/C
-entries with their tiers, and [docs/m7-plan.md](docs/m7-plan.md) for the plan. ADPCM sound and the
-Arcade Card are Milestone 8 (the ADPCM RAM port exists as a register-level stand-in).
+**Status (2026-11-06): Milestone 8 (ADPCM), local only (no remote, no push).** See
+[docs/m8-record.md](docs/m8-record.md) for the ADPCM unit, the judges and the U/C entries,
+[docs/m7-record.md](docs/m7-record.md) for the CD unit core and [docs/m7-plan.md](docs/m7-plan.md) for
+the M7 plan. The Arcade Card and the subchannel Q stream are **not built**.
 Python floor 3.11 (PyPy supports it); this is a reference board, correct, not fast.
 
 ```sh

@@ -44,6 +44,7 @@ class PcEngineCd:
         self.unit = CdUnit(disc, bram=bram, card=self.card)
         self.board = Board(machine, card=self.card, port=self.unit, **board_kwargs)
         self.board.audio_sources.append(self.unit.cdda)
+        self.board.audio_sources.append(self.unit.adpcm_source)
 
     def build(self, cpu_class: type | None = None) -> System:
         """The real HuC6280 core on this board."""

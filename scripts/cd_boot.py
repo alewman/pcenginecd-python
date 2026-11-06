@@ -56,6 +56,7 @@ def main() -> int:
     ap.add_argument(
         "--press-again", default="", help="comma list of frames at which to tap RUN for 10 frames"
     )
+    ap.add_argument("--wav", type=Path, help="write the board's mixed audio (44.1 kHz stereo)")
     a = ap.parse_args()
 
     from pcengine_python import pads
@@ -95,6 +96,9 @@ def main() -> int:
     system = cd.build()
     taps = {int(x) for x in a.press_again.split(",") if x}
     shots = {int(x) for x in a.png_at.split(",") if x}
+    audio: list[tuple[int, int]] = []
+    if a.wav:
+        board.take_audio()  # the CD-DA and ADPCM streams start at the first call
     began = time.monotonic()
     for frame in range(1, a.frames + 1):
         if a.press_run_at and frame == a.press_run_at:
@@ -106,11 +110,23 @@ def main() -> int:
         if frame - 10 in taps:
             pad.pressed &= ~pads.RUN
         system.run_frame()
+        if a.wav:
+            audio.extend(board.take_audio())
         if frame in shots:
             save_frame(board, a.out / f"frame{frame:05d}.pkl")
         if frame % 50 == 0:
             print(f"frame {frame} {time.monotonic() - began:.0f}s", file=sys.stderr, flush=True)
 
+    if a.wav:
+        import array
+        import wave
+
+        pcm = array.array("h", [v for pair in audio for v in pair])
+        with wave.open(str(a.wav), "wb") as w:
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(44100)
+            w.writeframes(pcm.tobytes())
     (a.out / "commands.txt").write_text("\n".join(f"{t} {text}" for t, text in unit.bus.log) + "\n")
     (a.out / "regs.txt").write_text("\n".join(regs) + "\n")
     summary = {
@@ -120,6 +136,8 @@ def main() -> int:
         "pc": hex(system.cpu.pc),
         "irq2_sources": sorted(board.irq2.sources),
         "bus_phase": unit.bus.phase.value,
+        "adpcm_samples": unit.adpcm.sample_count,
+        "adpcm_ends": unit.adpcm.end_count,
     }
     (a.out / "summary.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary))

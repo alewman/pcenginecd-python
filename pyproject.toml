@@ -12,11 +12,12 @@ requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [{ name = "alewman" }]
 # The base board, pinned by git revision (a local repository). Nothing is copied from it.
-# bc31f9c = 5befa54 plus issue 0002 (the board calls PortDevice.catch_up; the CD's S1 workaround is gone).
+# fc923c5 = 5befa54 plus issue 0002 (the board calls PortDevice.catch_up; the CD's S1 workaround is gone)
+# and issue 0003 (the board mixes audio_sources: Board.take_audio).
 # It brings huc6280-python (a379416) with it. Repin deliberately and rerun the tests and the
 # boot runs (docs/m7-record.md).
 dependencies = [
-    "pcengine-python @ git+file:///data/emu/pcengine-python@bc31f9cb129c5a6168789aa06036d6d5211f0ca7",
+    "pcengine-python @ git+file:///data/emu/pcengine-python@fc923c529c913d9da0fd81648f4d5a3763cf2b20",
 ]
 
 [project.optional-dependencies]

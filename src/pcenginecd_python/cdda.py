@@ -196,9 +196,12 @@ class CddaPlayer:
             return 0, 0
         return self._frame(self._sample_at(self._now))
 
-    def fade_gain(self, mclk: int) -> float:
-        if not self.fade_register & 0x08 or self.fade_register & 0x02:
-            return 1.0  # no fade, or it is aimed at ADPCM
+    def fade_gain(self, mclk: int, adpcm: bool = False) -> float:
+        """The `$180F` fader's gain for CD-DA, or for ADPCM (`adpcm=True`: the fade is aimed at
+        it by bit 1; pcetech did not test the ADPCM fade, the Hudson BIOS manual's CD_FADE lists
+        $0A and $0E for it: U9/M8)."""
+        if not self.fade_register & 0x08 or bool(self.fade_register & 0x02) != adpcm:
+            return 1.0  # no fade, or it is aimed at the other source
         seconds = self.FADE_FAST_SECONDS if self.fade_register & 0x04 else self.FADE_SLOW_SECONDS
         return max(0.0, 1.0 - (mclk - self._fade_start) / (seconds * MASTER_HZ))
 

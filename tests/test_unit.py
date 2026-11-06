@@ -1,4 +1,4 @@
-"""The CD unit's registers, RAM, BRAM, IRQ2 and the ADPCM stand-in."""
+"""The CD unit's registers, RAM, BRAM, IRQ2 and the ADPCM register port."""
 
 from discs import disc_data_only
 from helpers import REG, Host
@@ -111,11 +111,16 @@ def test_adpcm_ram_port_reads_are_buffered_and_pointers_increment_and_wrap():
     h.w(0x0D, 0x02 | 0x01)  # copy to the write pointer, no step back
     for v in (0xA1, 0xA2, 0xA3):
         h.w(0x0A, v)
+        h.advance(100)  # the RAM takes a write in about 24 CPU cycles ($180C bit 2)
     assert bytes(unit.adpcm.ram[0x1000:0x1003]) == b"\xa1\xa2\xa3"
     h.w(0x0D, 0x00)
     h.w(0x0D, 0x08 | 0x04)  # read pointer = latch
     first = h.r(0x0A)  # the buffer from before
-    assert [h.r(0x0A) for _ in range(3)] == [0xA1, 0xA2, 0xA3]
+    values = []
+    for _ in range(3):
+        h.advance(100)  # a read is buffered: bit 7 of $180C clears in about 24 cycles
+        values.append(h.r(0x0A))
+    assert values == [0xA1, 0xA2, 0xA3]
     assert first == 0
     h.w(0x0D, 0x80)  # reset: pointers to zero
     assert unit.adpcm.read_ptr == 0 and unit.adpcm.write_ptr == 0
@@ -144,6 +149,7 @@ def test_adpcm_dma_moves_a_sector_from_the_drive_into_adpcm_ram():
     h.command([8, 0, 0, 4, 1, 0])
     h.w(0x0B, 0x02)
     h.wait(0xD8)  # the status phase: every byte was taken by the DMA, none by the CPU
+    h.advance(200)  # the last byte is still going into the RAM
     assert bytes(unit.adpcm.ram[0x2000:0x2004]) == bytes([4, 5, 6, 7])
     assert unit.adpcm.ram[0x2000 + 2047] == (4 + 2047) & 0xFF
     assert unit.adpcm.write_ptr == 0x2000 + 2048

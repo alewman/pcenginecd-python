@@ -20,26 +20,27 @@ each is marked]:
 | `$1807` | subchannel byte (not modelled: 0) | D7 set **unlocks BRAM** |
 | `$1808` | the SCSI data bus; a read of data in pulses ACK | ADPCM address low |
 | `$1809` | -- | ADPCM address high |
-| `$180A-$180E` | ADPCM stand-in (no sound, M8); `$180B` bit 1 = CD-to-ADPCM DMA | ADPCM |
+| `$1808/9`, `$180A-$180E` | the ADPCM unit (adpcm.py); `$180B` bit 1 = CD-to-ADPCM DMA | the same |
 | `$180F` | the fader register | fade control |
 | `$18C0-$18C7` | the Super System Card id registers (answered by the card) | -- |
 
 IRQ2 = (enable mask & active bits) != 0. Active bits: 0x04 ADPCM half, 0x08 ADPCM end, 0x10
 subchannel, 0x20 status/message-in (REQ in those phases), 0x40 data-in (REQ in data in). The
-status/message and data-in bits are derived from the bus levels; ADPCM and subchannel are M8/U9.
+status/message and data-in bits are derived from the bus levels, the ADPCM bits are the unit's half
+and end flags (adpcm.py), the subchannel bit is U9.
 """
 
 from __future__ import annotations
 
 from pcengine_python.sockets import BoardPins, IrqLine, ResetKind
 
+from pcenginecd_python.adpcm import Adpcm, AdpcmSource
 from pcenginecd_python.cdda import CddaPlayer
 from pcenginecd_python.disc import Disc
 from pcenginecd_python.scsi import ScsiBus
 
 CD_RAM_BYTES = 64 * 1024
 BRAM_BYTES = 2 * 1024
-ADPCM_RAM_BYTES = 64 * 1024
 
 # The pages of the 256-byte-granular decode (docs/sockets.md of the base board).
 CD_RAM_PAGES = (0x1000, 0x10FF)  # banks $80-$87, physical $100000-$10FFFF [hw: pcetech 8]
@@ -56,72 +57,6 @@ IRQ_DATA_IN = 0x40
 # The real RAM is battery-backed and its content at an owner's first power-up is unknown (U36);
 # unformatted RAM makes some games (Far East of Eden) misbehave [emu: Mesen2 comment].
 BRAM_FORMATTED = bytes([0x48, 0x55, 0x42, 0x4D, 0x00, 0xA0, 0x10, 0x80])
-
-
-class _Adpcm:
-    """The ADPCM RAM port as registers only (M8 will add the decoder, timing and DMA).
-
-    `$180A` reads and writes the 64 KiB RAM through separate read and write pointers; a read is
-    buffered (the first read after setting the pointer returns the old buffer) [hw: pcetech 8].
-    `$180D` copies the address latch (`$1808/9`) into the pointers: bit 3 for the read pointer
-    (bit 2: do not step back), bit 1 for the write pointer (bit 0), on a rising edge [emu: Mesen2];
-    bit 7 resets both pointers. Operations complete at once (the real chip takes ~24 CPU cycles,
-    U9), so `$180C` always reads idle (D0 end reached, D3 playing, D2 write busy, D7 read busy
-    are 0).
-    """
-
-    def __init__(self) -> None:
-        self.ram = bytearray(ADPCM_RAM_BYTES)
-        self.latch = 0
-        self.read_ptr = self.write_ptr = 0
-        self.read_buffer = 0
-        self.control = 0
-        self.dma = 0
-        self.rate = 0
-        self.length = 0
-
-    def write(self, reg: int, value: int) -> None:
-        if reg == 0x08:
-            self.latch = (self.latch & 0xFF00) | value
-        elif reg == 0x09:
-            self.latch = (self.latch & 0x00FF) | (value << 8)
-        elif reg == 0x0A:
-            self.ram[self.write_ptr] = value
-            self.write_ptr = (self.write_ptr + 1) & 0xFFFF
-        elif reg == 0x0B:
-            self.dma = value  # bit 0 is cleared by the unit when it sees no data (see CdUnit)
-        elif reg == 0x0D:
-            old, self.control = self.control, value
-            if value & 0x02 and not old & 0x02:
-                self.write_ptr = (self.latch - (0 if value & 0x01 else 1)) & 0xFFFF
-            if value & 0x08 and not old & 0x08:
-                self.read_ptr = (self.latch - (0 if value & 0x04 else 1)) & 0xFFFF
-            if value & 0x10:
-                self.length = self.latch
-            if value & 0x80:
-                self.read_ptr = self.write_ptr = 0
-        elif reg == 0x0E:
-            self.rate = value
-
-    def read(self, reg: int) -> int:
-        if reg == 0x0A:
-            value = self.read_buffer
-            self.read_buffer = self.ram[self.read_ptr]
-            self.read_ptr = (self.read_ptr + 1) & 0xFFFF
-            return value
-        if reg == 0x0B:
-            return self.dma
-        if reg == 0x0C:
-            return 0
-        if reg == 0x0D:
-            return self.control
-        if reg == 0x0E:
-            return self.rate
-        return 0
-
-    def reset(self) -> None:
-        self.read_ptr = self.write_ptr = 0
-        self.control = self.dma = 0
 
 
 class CdUnit:
@@ -142,7 +77,8 @@ class CdUnit:
         self.cdda.disc = disc
         self.bus = ScsiBus(disc, self.cdda, self._bus_irq)
         self.cdda.on_good_status = self.bus.good_status
-        self.adpcm = _Adpcm()
+        self.adpcm = Adpcm(self._adpcm_irq)
+        self.adpcm_source = AdpcmSource(self)
         self.ram = bytearray(CD_RAM_BYTES)
         self.bram = bytearray(BRAM_BYTES)
         header = BRAM_FORMATTED if bram is None else bram
@@ -180,7 +116,7 @@ class CdUnit:
         if kind is ResetKind.POWER_ON:
             self.bram_locked = True
             self.bus.reset()
-            self.adpcm.reset()
+            self.adpcm.power_on()
             self.enable = self.active = self.reset_register = 0
             self.right_channel = False
             self.sample_latch = 0
@@ -192,28 +128,30 @@ class CdUnit:
         self.mclk = mclk
 
     def _run(self, mclk: int) -> None:
-        """Run the drive and the ADPCM DMA, event by event, up to `mclk`."""
-        bus = self.bus
+        """Run the drive, the ADPCM unit and the ADPCM DMA, event by event, up to `mclk`."""
+        bus, adpcm = self.bus, self.adpcm
         while True:
-            at = bus.next_event()
-            if self._dma_at is not None and (at is None or self._dma_at <= at):
-                at = self._dma_at
+            at = self._soonest()
             if at is None or at > mclk:
                 break
             bus.run_to(at)
+            adpcm.run(at)
             if self._dma_at == at:
                 self._dma_at = None
-                self._dma_step()
+                self._dma_step(at)
             self._dma_arm()
         bus.run_to(mclk)
+        adpcm.run(mclk)
         self._dma_arm()
         self._next_event = self._soonest()
 
     def _soonest(self) -> int | None:
-        at = self.bus.next_event()
-        if self._dma_at is not None and (at is None or self._dma_at < at):
-            return self._dma_at
-        return at
+        times = [
+            t
+            for t in (self.bus.next_event(), self._dma_at, self.adpcm.next_event())
+            if t is not None
+        ]
+        return min(times) if times else None
 
     # -- CD to ADPCM DMA (AD_TRANS): `$180B` bits 1/0 [hw: pcetech 8, "no DMA to RAM ... only one
     # sector at a time into ADPCM RAM"; the BIOS sets bit 1, polls `$180C` bit 2 and `$1803` bit 5].
@@ -231,17 +169,16 @@ class CdUnit:
         ):
             self._dma_at = bus.now + self.DMA_BYTE_CLOCKS
 
-    def _dma_step(self) -> None:
-        bus = self.bus
-        if not (self.adpcm.dma & 0x03 and bus.req and bus.io and not bus.cd and not bus.ack):
+    def _dma_step(self, at: int) -> None:
+        bus, adpcm = self.bus, self.adpcm
+        if not (adpcm.dma & 0x03 and bus.req and bus.io and not bus.cd and not bus.ack):
             return
-        self.adpcm.ram[self.adpcm.write_ptr] = bus.read_data()
-        self.adpcm.write_ptr = (self.adpcm.write_ptr + 1) & 0xFFFF
+        if not adpcm.dma_write(bus.read_data(), at):
+            self._dma_at = at + 3  # the RAM is still taking the last byte: ask again
+            return
         bus.pulse_ack()
         if not bus.out:
-            self.adpcm.dma &= (
-                ~0x01
-            )  # the sector is through (bit 1, the request, stays until cleared)
+            adpcm.dma &= ~0x01  # the sector is through (bit 1, the request, stays until cleared)
 
     # -- IRQ2 ------------------------------------------------------------------------------------
 
@@ -249,6 +186,15 @@ class CdUnit:
         if level:
             if not self.reset_register & 0x02:  # no IRQ while the drive is held in reset
                 self.active |= mask
+        else:
+            self.active &= ~mask
+        self._update_irq()
+
+    def _adpcm_irq(self, mask: int, level: bool) -> None:
+        """The ADPCM half and end flags: IRQ2 sources `$04` and `$08` (the drive's reset does not
+        hold them off)."""
+        if level:
+            self.active |= mask
         else:
             self.active &= ~mask
         self._update_irq()
@@ -308,7 +254,9 @@ class CdUnit:
                 self._next_event = self._soonest()
             return value
         if 0x09 <= reg <= 0x0E:
-            return self.adpcm.read(reg)
+            value = self.adpcm.read(reg, mclk)
+            self._next_event = self._soonest()
+            return value
         if reg == 0x0F:
             return self.cdda.fade_register
         if 0xC0 <= reg <= 0xC7 and self.card is not None and hasattr(self.card, "register_read"):
@@ -344,6 +292,6 @@ class CdUnit:
         elif 0x08 <= reg <= 0x0E:
             if reg == 0x0B and not bus.out:
                 value &= ~0x01  # bit 0 cannot be set when no data block is waiting [emu: Mesen2]
-            self.adpcm.write(reg, value)
+            self.adpcm.write(reg, value, mclk)
         elif reg == 0x0F:
             self.cdda.write_fade(value, mclk)

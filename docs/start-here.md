@@ -32,7 +32,7 @@ drive's firmware is not emulated; the controller is a bus state machine
 | 3 one decode | all three claims replace the base page handlers; the card's own claim covers `$00-$7F` |
 | 5 clock domains | `CdUnit.catch_up(mclk)` runs the drive; the board calls it every advance (finding S1 below, fixed in the base by issue 0002) |
 | 6 interrupts | the unit's bit `"cd"` on `board.irq2`: set while `(enable mask & active bits) != 0` |
-| 9 audio | `CddaPlayer` appended to `board.audio_sources` (44.1 kHz stereo, `take_samples(mclk)`) |
+| 9 audio | `CddaPlayer` and `AdpcmSource` appended to `board.audio_sources` (44.1 kHz stereo, `take_samples(mclk)`); the base `Mixer` sums them (`Board.take_audio()`) |
 | 10 reset | `reset(ResetKind.POWER_ON)` re-locks BRAM and clears the bus; the CD is reset by `$1804` bit 1 inside the unit |
 
 Not used: pixel path, controller port, video timing, second VDC.
@@ -48,8 +48,9 @@ Not used: pixel path, controller port, video timing, second VDC.
   the rest of the page, and the page table is 256-byte granular (the Sega finding again). The unit asks
   the card (`SystemCard.register_read`) for `$18C0-$18C7`. A finer decode in the base would be the
   cleaner answer if the Arcade Card (`$1A00`) and a third device collide.
-- **S3: no audio mixer.** `audio_sources` is a list; nothing calls `take_samples`. The host does
-  (`scripts/cd_boot.py` does not write audio yet: M8).
+- **S3 (fixed in the base, 2026-11-06): no audio mixer.** `audio_sources` was a list nothing consumed.
+  The base now has `Mixer` and `Board.take_audio()` (issue 0003, fc923c5); the CD-DA player and the
+  ADPCM source are appended to the list and `scripts/cd_boot.py --wav` writes the mix.
 
 ## Module shape
 
@@ -59,7 +60,8 @@ pcenginecd_python/
   seek.py     Shadoff's measured seek model (tier 3)
   cdda.py     CddaPlayer: lazy-time audio player, samples, $1805 latch, fader
   scsi.py     ScsiBus: signals, phases, REQ/ACK, the command set, sector delivery, timing attributes
-  unit.py     CdUnit: registers, CD RAM, BRAM, IRQ2, ADPCM RAM port stand-in
+  unit.py     CdUnit: registers, CD RAM, BRAM, IRQ2, the CD-to-ADPCM DMA
+  adpcm.py    Adpcm (RAM, pointers, flags, MSM5205 decoder) and AdpcmSource (the audio source)
   syscard.py  SystemCard: BIOS image, Super RAM, id registers
   board.py    PcEngineCd (card + unit + board)
 scripts/
