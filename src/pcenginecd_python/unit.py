@@ -2,7 +2,7 @@
 
 It plugs into the base board's socket 2 (`PortDevice`): `claims()` lists the pages, every access
 carries its master-clock time, `catch_up(mclk)` runs the drive up to it (the board calls it every
-cycle through `CdBoard`, see board.py), `present` pulls the I/O port's bit 7 low, and IRQ2 is the
+cycle, base issue 0002), `present` pulls the I/O port's bit 7 low, and IRQ2 is the
 board's wired-OR line with this unit's own bit, "cd".
 
 Registers [hw: pcetech 8 for the names; the bit-level behaviour is emulator-derived, tier 5, and

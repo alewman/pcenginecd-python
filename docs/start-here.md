@@ -30,7 +30,7 @@ drive's firmware is not emulated; the controller is a bus state machine
 | 1 HuCard slot | `SystemCard(RomCard)`: the BIOS image mirrored through `$00-$67`, Super RAM `$68-$7F` (a card is not confined to the ROM window), the id registers it answers through the unit |
 | 2 expansion port | `CdUnit` is the `PortDevice`: claims pages `$1000-$10FF` (CD RAM), `$1EE0-$1EE7` (BRAM), `$1FF8` (registers); `present` drives I/O bit 7 low |
 | 3 one decode | all three claims replace the base page handlers; the card's own claim covers `$00-$7F` |
-| 5 clock domains | `CdUnit.catch_up(mclk)` runs the drive: **but the board never calls it** (finding S1 below), so `CdBoard` calls it every advance |
+| 5 clock domains | `CdUnit.catch_up(mclk)` runs the drive; the board calls it every advance (finding S1 below, fixed in the base by issue 0002) |
 | 6 interrupts | the unit's bit `"cd"` on `board.irq2`: set while `(enable mask & active bits) != 0` |
 | 9 audio | `CddaPlayer` appended to `board.audio_sources` (44.1 kHz stereo, `take_samples(mclk)`) |
 | 10 reset | `reset(ResetKind.POWER_ON)` re-locks BRAM and clears the bus; the CD is reset by `$1804` bit 1 inside the unit |
@@ -39,13 +39,11 @@ Not used: pixel path, controller port, video timing, second VDC.
 
 ### What the base board did not do for an add-on (documented socket findings)
 
-- **S1: `PortDevice.catch_up` is never called by the board.** It is in the Protocol, the fake has the
-  recording list, but `Board._run_to` only runs the VDCs and the timer. A device that must act by itself
-  (the drive's REQ, a sector arriving, an audio command ending) would only see time at its own register
-  accesses and could not raise IRQ2 between them. `CdBoard._run_to` (board.py) calls it, without editing
-  `pcengine-python`. A base change would be four lines and one test (call `self.port.catch_up(target)`
-  after the loop); it is **proposed, not made**, because the base repository belongs to another agent
-  this week. Cost measured: one Python call per CPU cycle with a cheap early-out.
+- **S1 (fixed in the base, 2026-11-06): `PortDevice.catch_up` was never called by the board.** A device that
+  must act by itself (the drive's REQ, a sector arriving, an audio command ending) would only see time at
+  its own register accesses and could not raise IRQ2 between them. M7 worked around it with a `CdBoard`
+  subclass; the base now calls `self.port.catch_up(target)` after the loop (pcengine-python issue 0002,
+  bc31f9c), and `CdBoard` is gone. Cost: one Python call per CPU cycle with a cheap early-out.
 - **S2: two devices share the `$1800` page.** The Super System Card answers `$18C1-$18C7`, the CD unit
   the rest of the page, and the page table is 256-byte granular (the Sega finding again). The unit asks
   the card (`SystemCard.register_read`) for `$18C0-$18C7`. A finer decode in the base would be the
@@ -63,7 +61,7 @@ pcenginecd_python/
   scsi.py     ScsiBus: signals, phases, REQ/ACK, the command set, sector delivery, timing attributes
   unit.py     CdUnit: registers, CD RAM, BRAM, IRQ2, ADPCM RAM port stand-in
   syscard.py  SystemCard: BIOS image, Super RAM, id registers
-  board.py    CdBoard (the catch-up), PcEngineCd (card + unit + board)
+  board.py    PcEngineCd (card + unit + board)
 scripts/
   cd_boot.py   boot a disc N frames, log commands/registers, dump frames as pickles
   rows_png.py  pickles to PNGs (system python3, Pillow)

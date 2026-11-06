@@ -57,7 +57,7 @@ s a frame), 1.4 s a frame at load average 45. A reference board, not a fast one.
 
 ## Findings on the base board's sockets (details in start-here.md)
 
-- **S1**: `PortDevice.catch_up` is never called by the board. Worked around by `CdBoard._run_to`. Proposed base
+- **S1** (fixed 2026-11-06 by base issue 0002, `CdBoard` removed): `PortDevice.catch_up` was never called by the board. Worked around by `CdBoard._run_to`. Proposed base
   change (not made): call `self.port.catch_up(target)` after the device loop in `Board._run_to`.
 - **S2**: two devices share the `$1800` page (card id registers, CD registers); solved by the unit asking the card.
 - **S3**: no audio mixer consumes `board.audio_sources`.
