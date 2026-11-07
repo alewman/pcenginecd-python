@@ -46,6 +46,7 @@ def main() -> int:
     ap.add_argument("--png-at", default="", help="comma list of frame numbers")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--scratch", type=Path, help="where a .chd is expanded (caller deletes it)")
+    ap.add_argument("--arcade", action="store_true", help="fit the Arcade Card (arcade.py)")
     ap.add_argument("--trace-regs", type=int, default=0)
     ap.add_argument(
         "--adpcm-writes",
@@ -78,7 +79,7 @@ def main() -> int:
     else:
         disc = Disc.from_cue(a.disc)
     pad = pads.Pad2()
-    cd = PcEngineCd(a.system_card, disc, pad=pad)
+    cd = PcEngineCd(a.system_card, disc, pad=pad, arcade_card=a.arcade)
     unit, board = cd.unit, cd.board
     unit.bus.record_log = True
 
@@ -114,6 +115,31 @@ def main() -> int:
 
         unit.write = adpcm_write
         board.pages.claim(0x1FF8, 0x1FF8, unit)
+
+    arcade_stats = {"register_reads": 0, "register_writes": 0, "id_reads": 0, "data_accesses": 0}
+    if cd.arcade is not None:
+        card = cd.arcade
+        inner = (card.read_register, card.write_register, card.read_data, card.write_data)
+
+        def ac_rr(reg):
+            arcade_stats["register_reads"] += 1
+            arcade_stats["id_reads"] += reg == 0xFF
+            return inner[0](reg)
+
+        def ac_rw(reg, value):
+            arcade_stats["register_writes"] += 1
+            inner[1](reg, value)
+
+        def ac_rd(port):
+            arcade_stats["data_accesses"] += 1
+            return inner[2](port)
+
+        def ac_wd(port, value):
+            arcade_stats["data_accesses"] += 1
+            inner[3](port, value)
+
+        card.read_register, card.write_register = ac_rr, ac_rw
+        card.read_data, card.write_data = ac_rd, ac_wd
 
     system = cd.build()
     taps = {int(x) for x in a.press_again.split(",") if x}
@@ -162,6 +188,7 @@ def main() -> int:
         "bus_phase": unit.bus.phase.value,
         "adpcm_samples": unit.adpcm.sample_count,
         "adpcm_ends": unit.adpcm.end_count,
+        "arcade": arcade_stats if cd.arcade is not None else None,
         "adpcm_register_writes": adpcm_count[0] if a.adpcm_writes else None,
     }
     (a.out / "summary.json").write_text(json.dumps(summary, indent=1))

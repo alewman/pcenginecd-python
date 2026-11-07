@@ -28,7 +28,7 @@ drive's firmware is not emulated; the controller is a bus state machine
 | Socket | Use here |
 | --- | --- |
 | 1 HuCard slot | `SystemCard(RomCard)`: the BIOS image mirrored through `$00-$67`, Super RAM `$68-$7F` (a card is not confined to the ROM window), the id registers it answers through the unit |
-| 2 expansion port | `CdUnit` is the `PortDevice`: claims pages `$1000-$10FF` (CD RAM), `$1EE0-$1EE7` (BRAM), `$1FF8` (registers); `present` drives I/O bit 7 low |
+| 2 expansion port | `CdUnit` is the `PortDevice`: claims pages `$1000-$10FF` (CD RAM), `$1EE0-$1EE7` (BRAM), `$1FF8` (registers) and, with an Arcade Card fitted, `$0800-$087F` and `$1FFA`; `present` drives I/O bit 7 low |
 | 3 one decode | all three claims replace the base page handlers; the card's own claim covers `$00-$7F` |
 | 5 clock domains | `CdUnit.catch_up(mclk)` runs the drive; the board calls it every advance (finding S1 below, fixed in the base by issue 0002) |
 | 6 interrupts | the unit's bit `"cd"` on `board.irq2`: set while `(enable mask & active bits) != 0` |
@@ -46,8 +46,9 @@ Not used: pixel path, controller port, video timing, second VDC.
   bc31f9c), and `CdBoard` is gone. Cost: one Python call per CPU cycle with a cheap early-out.
 - **S2: two devices share the `$1800` page.** The Super System Card answers `$18C1-$18C7`, the CD unit
   the rest of the page, and the page table is 256-byte granular (the Sega finding again). The unit asks
-  the card (`SystemCard.register_read`) for `$18C0-$18C7`. A finer decode in the base would be the
-  cleaner answer if the Arcade Card (`$1A00`) and a third device collide.
+  the card (`SystemCard.register_read`) for `$18C0-$18C7`. The Arcade Card (M9) sits on
+  pages `$1FFA` (`$1A00-$1AFF`) and `$0800-$087F` (banks `$40-$43`), so it did not collide: the unit
+  claims them for it and answers without a catch-up.
 - **S3 (fixed in the base, 2026-11-06): no audio mixer.** `audio_sources` was a list nothing consumed.
   The base now has `Mixer` and `Board.take_audio()` (issue 0003, fc923c5); the CD-DA player and the
   ADPCM source are appended to the list and `scripts/cd_boot.py --wav` writes the mix.
@@ -62,10 +63,11 @@ pcenginecd_python/
   scsi.py     ScsiBus: signals, phases, REQ/ACK, the command set, sector delivery, timing attributes
   unit.py     CdUnit: registers, CD RAM, BRAM, IRQ2, the CD-to-ADPCM DMA
   adpcm.py    Adpcm (RAM, pointers, flags, MSM5205 decoder) and AdpcmSource (the audio source)
+  arcade.py   ArcadeCard: 2 MiB RAM, four ports, shift/rotate unit, ID (a component of the unit)
   syscard.py  SystemCard: BIOS image, Super RAM, id registers
   board.py    PcEngineCd (card + unit + board)
 scripts/
-  cd_boot.py   boot a disc N frames, log commands/registers, dump frames as pickles
+  cd_boot.py   boot a disc N frames (--arcade fits the Arcade Card), log commands/registers, dump frames
   rows_png.py  pickles to PNGs (system python3, Pillow)
   scratch.py   extract a CHD once / remove the expansion (no shell rm)
 ```

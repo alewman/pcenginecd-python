@@ -22,6 +22,7 @@ each is marked]:
 | `$1809` | -- | ADPCM address high |
 | `$1808/9`, `$180A-$180E` | the ADPCM unit (adpcm.py); `$180B` bit 1 = CD-to-ADPCM DMA | the same |
 | `$180F` | the fader register | fade control |
+| `$1A00-$1AFF`, banks `$40-$43` | the Arcade Card, when fitted (arcade.py) | the same |
 | `$18C0-$18C7` | the Super System Card id registers (answered by the card) | -- |
 
 IRQ2 = (enable mask & active bits) != 0. Active bits: 0x04 ADPCM half, 0x08 ADPCM end, 0x10
@@ -35,6 +36,8 @@ from __future__ import annotations
 from pcengine_python.sockets import BoardPins, IrqLine, ResetKind
 
 from pcenginecd_python.adpcm import Adpcm, AdpcmSource
+from pcenginecd_python.arcade import REGISTER_PAGE as ARCADE_REGISTER_PAGE
+from pcenginecd_python.arcade import ArcadeCard
 from pcenginecd_python.cdda import CddaPlayer
 from pcenginecd_python.disc import Disc
 from pcenginecd_python.scsi import ScsiBus
@@ -72,7 +75,14 @@ class CdUnit:
     grounds_cd = False  # the unit is not a card: the System Card grounds /CD
     present = True  # K7 low: the I/O port reports "CD unit attached" (C6 polarity)
 
-    def __init__(self, disc: Disc | None = None, *, bram: bytes | None = None, card=None) -> None:
+    def __init__(
+        self,
+        disc: Disc | None = None,
+        *,
+        bram: bytes | None = None,
+        card=None,
+        arcade: ArcadeCard | None = None,
+    ) -> None:
         self.cdda = CddaPlayer()
         self.cdda.disc = disc
         self.bus = ScsiBus(disc, self.cdda, self._bus_irq)
@@ -84,6 +94,9 @@ class CdUnit:
         header = BRAM_FORMATTED if bram is None else bram
         self.bram[: len(header)] = header
         self.bram_locked = True  # [hw: pcetech 8] locked at power-up
+        self.arcade = (
+            arcade  # the Arcade Card, if fitted: banks $40-$43 and $1A00-$1AFF (arcade.py)
+        )
         self.card = card  # for the $18C0-$18C7 id registers (a Super System Card answers them)
         self.irq2: IrqLine | None = None
         self.enable = 0
@@ -110,9 +123,14 @@ class CdUnit:
         self.irq2 = pins.irq2
 
     def claims(self) -> list[tuple[int, int]]:
-        return [CD_RAM_PAGES, BRAM_PAGES, (REGISTER_PAGE, REGISTER_PAGE)]
+        pages = [CD_RAM_PAGES, BRAM_PAGES, (REGISTER_PAGE, REGISTER_PAGE)]
+        if self.arcade is not None:
+            pages += self.arcade.claims()
+        return pages
 
     def reset(self, kind: ResetKind) -> None:
+        if self.arcade is not None:
+            self.arcade.reset(kind)
         if kind is ResetKind.POWER_ON:
             self.bram_locked = True
             self.bus.reset()
@@ -206,8 +224,10 @@ class CdUnit:
     # -- the bus ---------------------------------------------------------------------------------
 
     def read(self, address: int, mclk: int) -> int:
-        self.catch_up(mclk)
         page = address >> 8
+        if self.arcade is not None and (page < 0x1000 or page == ARCADE_REGISTER_PAGE):
+            return self.arcade.read(address, mclk)  # no clock: skip the catch-up
+        self.catch_up(mclk)
         if CD_RAM_PAGES[0] <= page <= CD_RAM_PAGES[1]:
             return self.ram[address & 0xFFFF]
         if BRAM_PAGES[0] <= page <= BRAM_PAGES[1]:
@@ -215,8 +235,11 @@ class CdUnit:
         return self._read_register(address & 0xFF, mclk)
 
     def write(self, address: int, value: int, mclk: int) -> None:
-        self.catch_up(mclk)
         page = address >> 8
+        if self.arcade is not None and (page < 0x1000 or page == ARCADE_REGISTER_PAGE):
+            self.arcade.write(address, value, mclk)
+            return
+        self.catch_up(mclk)
         if CD_RAM_PAGES[0] <= page <= CD_RAM_PAGES[1]:
             self.ram[address & 0xFFFF] = value
         elif BRAM_PAGES[0] <= page <= BRAM_PAGES[1]:

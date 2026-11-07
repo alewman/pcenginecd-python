@@ -92,7 +92,7 @@ Not re-run: the base board's 18-picture gate (no VDC/VCE code touched).
 
 ## Still not built (stated)
 
-- **The Arcade Card** (`$1A00-$1AFF`, 2 MiB RAM, the three discs): not built, no work started.
+- **The Arcade Card** (`$1A00-$1AFF`, 2 MiB RAM, the three discs): not built at M8; built in M9 ([m9-record.md](m9-record.md)).
 - **Subchannel Q**: no `$1807` stream, IRQ bit `0x10` never raised (U9 of M7 stands).
 - The ADPCM unit's real DRAM slot timing (refresh and read/write slots that Mesen2 and Geargrafx model);
   the fixed 72-clock busy is enough for the BIOS and Pyramid Plunder.
