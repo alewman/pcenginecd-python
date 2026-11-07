@@ -5,7 +5,7 @@ import struct
 from discs import audio_sectors, disc_audio_then_data
 from helpers import Host
 
-from pcenginecd_python.cdda import SAMPLE_HZ, Status
+from pcenginecd_python.cdda import SAMPLE_HZ, CddaPlayer, Status
 from pcenginecd_python.disc import to_bcd
 from pcenginecd_python.unit import CdUnit
 
@@ -126,16 +126,30 @@ def test_1805_latches_left_then_right_sample():
     assert (left, right) != (0, 0)
 
 
-def test_fader_fades_cd_audio_over_about_eight_or_two_seconds():
+def test_fader_fades_cd_audio_over_six_or_two_and_a_half_seconds():
     unit, h = make()
     c = unit.cdda
     h.w(0x0F, 0x08)
     assert c.fade_gain(h.t) == 1.0
-    assert abs(c.fade_gain(h.t + 4 * MASTER) - 0.5) < 0.01
-    assert c.fade_gain(h.t + 9 * MASTER) == 0.0
+    assert abs(c.fade_gain(h.t + 3 * MASTER) - 0.5) < 0.01
+    assert c.fade_gain(h.t + 7 * MASTER) == 0.0
     h.w(0x0F, 0x0C)  # fast: a different value restarts the timer
-    assert abs(c.fade_gain(h.t + 1 * MASTER) - 0.5) < 0.01
+    assert abs(c.fade_gain(h.t + 1.25 * MASTER) - 0.5) < 0.01
+    assert c.fade_gain(h.t + 3 * MASTER) == 0.0
     h.w(0x0F, 0x00)
     assert c.fade_gain(h.t + 100 * MASTER) == 1.0
     h.w(0x0F, 0x0A)  # aimed at ADPCM: CD audio unaffected
     assert c.fade_gain(h.t + 100 * MASTER) == 1.0
+
+
+def test_the_pcetech_fade_times_are_a_switch():
+    unit, h = make()
+    c = unit.cdda
+    c.PCETECH_FADE = True  # instance attribute: the class default stays
+    h.w(0x0F, 0x08)
+    assert abs(c.fade_gain(h.t + 4 * MASTER) - 0.5) < 0.01  # 8 s
+    assert c.fade_gain(h.t + 9 * MASTER) == 0.0
+    h.w(0x0F, 0x0C)
+    assert abs(c.fade_gain(h.t + 1 * MASTER) - 0.5) < 0.01  # 2 s
+    assert c.fade_gain(h.t + 2.5 * MASTER) == 0.0
+    assert CddaPlayer.PCETECH_FADE is False

@@ -8,8 +8,9 @@ sectors a second [hw: Red Book]. Samples are signed 16-bit little-endian pairs.
 
 What is not modelled (U9): the drive's subchannel Q stream (the BIOS's `$1807` read and its IRQ
 bit 0x10), the DAC's filtering (Mednafen filters, Mesen2 resamples with a Hermite kernel), and the
-real fader curve: `$180F` is tier 2 (pcetech: "silence in about 8 seconds" / "about 2 seconds")
-and the shape between is linear here (Mesen2 fades 1% per 60 ms / 25 ms, i.e. 6 s / 2.5 s; MAME
+real fader curve: the times are the Hudson BIOS manual's 6 s / 2.5 s (tier 3; pcetech's tier-2
+"about 8 seconds" / "about 2 seconds" is the `PCETECH_FADE` switch) and the shape between is linear
+here (Mesen2 fades 1% per 60 ms / 25 ms, i.e. 6 s / 2.5 s; MAME
 calls its own fader "sketchy and unchecked against real HW").
 """
 
@@ -48,10 +49,15 @@ class CddaPlayer:
         Status.STOPPED: 3,
         Status.SEEKING: 3,
     }
-    # [hw: pcetech 8] fade timer: "silence in about 8 seconds" (value 8-9), "about 2 seconds"
-    # (C-D); tier 2. Linear.
-    FADE_SLOW_SECONDS = 8.0
-    FADE_FAST_SECONDS = 2.0
+    # Fade times, linear. Default: [mfr: Hudson BIOS manual CD_FADE "6.0 s / 2.5 s", tier 3; Mesen2
+    # and Mednafen agree, tier 5]. The manufacturer's manual outranks pcetech's research text.
+    # Switch: `PCETECH_FADE = True` selects [hw: pcetech 8] "silence in about 8 seconds" (value 8-9)
+    # and "about 2 seconds" (C-D), tier 2.
+    FADE_SLOW_SECONDS = 6.0
+    FADE_FAST_SECONDS = 2.5
+    PCETECH_SLOW_SECONDS = 8.0
+    PCETECH_FAST_SECONDS = 2.0
+    PCETECH_FADE = False
 
     def __init__(self) -> None:
         self.disc: Disc | None = None
@@ -202,7 +208,11 @@ class CddaPlayer:
         $0A and $0E for it: U9/M8)."""
         if not self.fade_register & 0x08 or bool(self.fade_register & 0x02) != adpcm:
             return 1.0  # no fade, or it is aimed at the other source
-        seconds = self.FADE_FAST_SECONDS if self.fade_register & 0x04 else self.FADE_SLOW_SECONDS
+        fast = bool(self.fade_register & 0x04)
+        if self.PCETECH_FADE:
+            seconds = self.PCETECH_FAST_SECONDS if fast else self.PCETECH_SLOW_SECONDS
+        else:
+            seconds = self.FADE_FAST_SECONDS if fast else self.FADE_SLOW_SECONDS
         return max(0.0, 1.0 - (mclk - self._fade_start) / (seconds * MASTER_HZ))
 
     def write_fade(self, value: int, mclk: int) -> None:

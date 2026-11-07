@@ -48,6 +48,13 @@ def main() -> int:
     ap.add_argument("--scratch", type=Path, help="where a .chd is expanded (caller deletes it)")
     ap.add_argument("--trace-regs", type=int, default=0)
     ap.add_argument(
+        "--adpcm-writes",
+        type=int,
+        default=0,
+        help="log the first N writes to $1808-$180E (the ADPCM registers) to adpcm_writes.txt "
+        "and count them all in summary.json",
+    )
+    ap.add_argument(
         "--press-run-at", type=int, default=0, help="hold RUN from this frame (0: never)"
     )
     ap.add_argument(
@@ -93,6 +100,21 @@ def main() -> int:
         unit.read, unit.write = traced_read, traced_write
         board.pages.claim(0x1FF8, 0x1FF8, unit)
 
+    adpcm_log: list[str] = []
+    adpcm_count = [0]
+    if a.adpcm_writes:
+        inner_write = unit.write
+
+        def adpcm_write(address, value, mclk):
+            if address >> 8 == 0x1FF8 and 0x08 <= address & 0xFF <= 0x0E:
+                adpcm_count[0] += 1
+                if len(adpcm_log) < a.adpcm_writes:
+                    adpcm_log.append(f"{mclk} W {address & 0xFFF:04X} {value:02X}")
+            inner_write(address, value, mclk)
+
+        unit.write = adpcm_write
+        board.pages.claim(0x1FF8, 0x1FF8, unit)
+
     system = cd.build()
     taps = {int(x) for x in a.press_again.split(",") if x}
     shots = {int(x) for x in a.png_at.split(",") if x}
@@ -128,6 +150,8 @@ def main() -> int:
             w.setframerate(44100)
             w.writeframes(pcm.tobytes())
     (a.out / "commands.txt").write_text("\n".join(f"{t} {text}" for t, text in unit.bus.log) + "\n")
+    if a.adpcm_writes:
+        (a.out / "adpcm_writes.txt").write_text("\n".join(adpcm_log) + "\n")
     (a.out / "regs.txt").write_text("\n".join(regs) + "\n")
     summary = {
         "frames": a.frames,
@@ -138,6 +162,7 @@ def main() -> int:
         "bus_phase": unit.bus.phase.value,
         "adpcm_samples": unit.adpcm.sample_count,
         "adpcm_ends": unit.adpcm.end_count,
+        "adpcm_register_writes": adpcm_count[0] if a.adpcm_writes else None,
     }
     (a.out / "summary.json").write_text(json.dumps(summary, indent=1))
     print(json.dumps(summary))

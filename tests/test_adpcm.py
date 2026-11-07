@@ -224,6 +224,9 @@ def test_the_fade_aimed_at_adpcm_scales_only_adpcm():
     early = [s[0] for s in source.take_samples(h.t)]
     assert unit.cdda.fade_gain(h.t) == 1.0  # CD-DA untouched
     assert unit.cdda.fade_gain(h.t + MASTER_HZ * 20, adpcm=True) == 0.0
+    assert abs(unit.cdda.fade_gain(h.t + MASTER_HZ * 3, adpcm=True) - 0.5) < 0.01  # 6 s default
+    unit.cdda.PCETECH_FADE = True
+    assert abs(unit.cdda.fade_gain(h.t + MASTER_HZ * 4, adpcm=True) - 0.5) < 0.01  # 8 s switch
     assert max(early) > 0
 
 

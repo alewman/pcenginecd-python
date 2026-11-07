@@ -28,7 +28,7 @@ Tiers are those of the base board's [validation.md](../../pcengine-python/docs/v
 
 ## Judges and what ran
 
-**Directed tests** (`tests/test_adpcm.py`, 15 tests; 68 in all, CPython 3.14 and PyPy 3.11 pass, ruff
+**Directed tests** (`tests/test_adpcm.py`, 15 tests; 68 in all at that run, 69 after the fade switch, CPython 3.14 and PyPy 3.11 pass, ruff
 clean): the step table's shape, sign and magnitude, index steps, saturate and wrap, the rate register
 (2 kHz ... 32 kHz), buffered reads and the bit 7 / bit 2 busy times, playback to the end flag and IRQ2
 through the enable mask, the playback time at 16 kHz (1.8 ms not done, 2.3 ms done), the length latch
@@ -56,8 +56,23 @@ sound (the lag above is the CD timing and the 7.5 s BIOS wait, not the decoder),
 comparison needs a ROM that plays one buffer, which does not exist here. **What this does not show:** the
 decoder against hardware; it shows it against a second implementation of the same unknown.
 
-**Not re-run:** the Addams Family and Insanity boots of M7 (a 50 minute run each at this load; whether
-either touches ADPCM is not checked) and the base board's 18-picture gate (no VDC/VCE code touched).
+**Decisions of 2026-11-07 (Aubrey):** the fade times default to the Hudson BIOS manual's 6 s / 2.5 s
+(U/C row C-fade; pcetech's 8 s / 2 s is the `CddaPlayer.PCETECH_FADE` switch), and the 12-bit signal keeps
+saturating (U9c; `SATURATE = False` wraps). Directed tests: 69 (the fade test covers both settings for
+CD-DA and ADPCM; the saturate/wrap test covers both).
+
+**Re-runs with the M8 code, 2026-11-07** (one at a time, niced PyPy, RUN held 20 frames at 450, each CHD
+extracted once and removed with `scripts/scratch.py remove`; load average 10-14 at the starts). New:
+`scripts/cd_boot.py --adpcm-writes N` logs writes to `$1808-$180E`. Geargrafx via `scripts/beetle_press.py`
+with the same press.
+
+| Disc | Frame reached | Picture vs Geargrafx | ADPCM |
+| --- | --- | --- | --- |
+| The Addams Family | 3,000 of 3,000 (1,035 s) | the same title screen ("Press Run!", "From NEC", Paramount lines), same layout (ours 341 wide, Geargrafx 341 here: visual match, not pixel-compared) | **yes**: 38 register writes, 18 drive commands (M7 had 10: it used to stop earlier); the game DMAs 16-sector blocks from the disc into ADPCM RAM (`$180B`=02/00 pairs, 9 loads in the run), sets the address and length, plays with `$180D=$60`; 533,755 samples decoded, one end flag |
+| Insanity | 3,000 of 3,000 (1,095 s) | the same title ("INSANITY", "PRESS RUN", Aetherbyte/Hurple 2009) and the raster-bar effect (the bars animate, so the phase differs) | **no**: 8 writes, all the BIOS's reset sequence (`$180D` 80/00, `$180B` 00, `$180E` 00, twice); 0 samples |
+| Pyramid Plunder | **not re-run** (load average 34 after Insanity); the M8 first run above stands (3,000 frames, title, Geargrafx match) | - | yes (114,688 samples, two ends) |
+
+Not re-run: the base board's 18-picture gate (no VDC/VCE code touched).
 
 ## U/C entries (tiers; all provisional)
 
@@ -65,14 +80,14 @@ either touches ADPCM is not checked) and the base board's 18-picture gate (no VD
 | --- | --- | --- | --- |
 | U9a | Playback base 32 kHz (`f = 32/(16-n)`); Mednafen uses 32,087.5 | pcetech, Hudson AD_PLAY (tier 2/3); Mednafen tier 5 | `Adpcm.BASE_HZ` |
 | U9b | `$180A` read and write busy 24 CPU cycles (72 clocks) | pcetech for the read (tier 2); write: Mesen2 22-24 cycles, Mednafen 33 clocks (tier 5) | `READ_CLOCKS`, `WRITE_CLOCKS` (0 = immediate) |
-| U9c | 12-bit signal: saturate (MAME) or wrap (Mesen2, Geargrafx) | undecided; the data sheet is not in `reference/` | `SATURATE` (True) |
+| U9c | 12-bit signal: saturate (MAME) or wrap (Mesen2, Geargrafx) | **Decided (Aubrey, 2026-11-07): saturate, as MAME.** The data sheet is not in `reference/`, so no tier above 5 decides it; wrap stays as a switch | `SATURATE` (True; False wraps; both tested) |
 | U9d | Output: signal x 10, held, mono on both channels, no filter; Geargrafx DC-blocks and low-passes, Mednafen has an optional LPF, Mesen2 resamples with Hermite | tier 5 | `OUTPUT_SCALE`; no filter |
 | U9e | Half flag: length `<` 0x8000 (pcetech "less than half"); Mesen2 and Geargrafx use `<=` while playing | tier 2 vs 5 | one line in `_play_sample` (not a switch: one sample) |
 | U9f | A RAM write at length zero raises the end flag; the BIOS clears it with the length latch | Mesen2, Geargrafx (tier 5); Mednafen has none | `END_ON_WRITE_AT_ZERO` |
 | U9g | End source is `$1803` bit 3 (`$08`); pcetech documents bit 2 (half) only. `$180C` bit 0 is the end flag (BIOS `AD_STAT`, tier 3) | four emulators agree (tier 5) for `$1803` bit 3 | `IRQ_END` |
 | C-ad1 | The decoder restarts (signal 0, index 0) at each play request; Mednafen does not show it | Mesen2, Geargrafx | in `_play_sample` |
 | C-ad2 | pcetech says `$180C` bit 1 is "playback halted"; the BIOS never reads it and four emulators leave it 0 | pcetech tier 2 | not modelled |
-| C-fade | Fade times: pcetech "about 8 s / 2 s" (kept, M7), Hudson BIOS manual `CD_FADE` "6.0 s / 2.5 s" (tier 3), Mesen2 and Mednafen 6 s / 2.5 s. The manual and the emulators agree and disagree with the tier-2 text. ADPCM is aimed by bit 1 (`$0A`, `$0E`), so ADPCM now fades with the same switch | tier 2 vs 3 | `CddaPlayer.FADE_SLOW_SECONDS`, `FADE_FAST_SECONDS` (8, 2: **undecided; Aubrey to rule**) |
+| C-fade | Fade times. **Decided (Aubrey, 2026-11-07): the manual's values until a better reason to switch.** Default 6 s / 2.5 s: Hudson BIOS manual `CD_FADE` (manufacturer manual, tier 3) outranks pcetech "about 8 s / 2 s" (research, tier 2), and Mesen2 and Mednafen agree with the manual (tier 5). ADPCM is aimed by bit 1 (`$0A`, `$0E`), so ADPCM fades with the same times | tier 3 over tier 2; tier 5 agrees with tier 3 | `CddaPlayer.FADE_SLOW_SECONDS`, `FADE_FAST_SECONDS` (6, 2.5); switch `PCETECH_FADE = True` selects `PCETECH_SLOW_SECONDS`, `PCETECH_FAST_SECONDS` (8, 2); both tested |
 | U9h | Playing past the length with bit 6 clear (repeat) wraps the length through 17 bits and keeps reading | Mesen2, Geargrafx (tier 5) | `LENGTH_MASK` |
 
 ## Still not built (stated)
