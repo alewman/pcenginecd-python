@@ -26,8 +26,8 @@ extracted or booted and no detector was run. Nothing below claims a disc picture
 ## Sources, and the limit of this build
 
 **There is no hardware-tier (2/3) source for the card in `reference/`.** `pcetech.txt` does not mention it;
-the Hudson BIOS manual under `reference/src/turbografx-mister/docs/` was not found to (a targeted
-grep of the Oss-PCE-CD-BIOS docs finds only "later target only"); MAME has the card as a cartridge
+the Hudson PDFs under `reference/src/turbografx-mister/docs/` were NOT searched this session (PDF, no
+text tool run); the Oss-PCE-CD-BIOS docs say only "later target only"; MAME has the card as a cartridge
 device and its `pce.xml` marks the Pro's BIOS "baddump" (`cd.md`). The register behaviour is therefore
 [emu: Mednafen `arcade_card.cpp` ("based on information provided by Ki and David Shadoff"), Geargrafx
 `arcade_card_mapper*`, Mesen2 `PceArcadeCard.cpp`], **tier 5, three independent implementations**, and
