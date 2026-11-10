@@ -117,25 +117,34 @@ def main() -> int:
         board.pages.claim(0x1FF8, 0x1FF8, unit)
 
     arcade_stats = {"register_reads": 0, "register_writes": 0, "id_reads": 0, "data_accesses": 0}
+    touched: dict = {"regs_read": set(), "regs_written": set(), "ram_read": {}, "ram_written": {}}
     if cd.arcade is not None:
         card = cd.arcade
         inner = (card.read_register, card.write_register, card.read_data, card.write_data)
 
+        def span(spans, port, address):
+            lo, hi = spans.get(f"port{port}", (address, address))
+            spans[f"port{port}"] = (min(lo, address), max(hi, address))
+
         def ac_rr(reg):
             arcade_stats["register_reads"] += 1
             arcade_stats["id_reads"] += reg == 0xFF
+            touched["regs_read"].add(reg)
             return inner[0](reg)
 
         def ac_rw(reg, value):
             arcade_stats["register_writes"] += 1
+            touched["regs_written"].add(reg)
             inner[1](reg, value)
 
         def ac_rd(port):
             arcade_stats["data_accesses"] += 1
+            span(touched["ram_read"], port, card.effective_address(port))
             return inner[2](port)
 
         def ac_wd(port, value):
             arcade_stats["data_accesses"] += 1
+            span(touched["ram_written"], port, card.effective_address(port))
             inner[3](port, value)
 
         card.read_register, card.write_register = ac_rr, ac_rw
@@ -189,6 +198,14 @@ def main() -> int:
         "adpcm_samples": unit.adpcm.sample_count,
         "adpcm_ends": unit.adpcm.end_count,
         "arcade": arcade_stats if cd.arcade is not None else None,
+        "arcade_touched": {
+            "regs_read": [f"{r:02X}" for r in sorted(touched["regs_read"])],
+            "regs_written": [f"{r:02X}" for r in sorted(touched["regs_written"])],
+            "ram_read": {k: [f"{v[0]:06X}", f"{v[1]:06X}"] for k, v in touched["ram_read"].items()},
+            "ram_written": {
+                k: [f"{v[0]:06X}", f"{v[1]:06X}"] for k, v in touched["ram_written"].items()
+            },
+        },
         "adpcm_register_writes": adpcm_count[0] if a.adpcm_writes else None,
     }
     (a.out / "summary.json").write_text(json.dumps(summary, indent=1))

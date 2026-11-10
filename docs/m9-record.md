@@ -2,9 +2,9 @@
 
 Local only. Base board pinned at `a0114c5` (`pcengine-python` on GitHub, which brings `huc6280-python`
 v0.2.0 / f31b630). Tiers as in the base board's [validation.md](../../pcengine-python/docs/validation.md).
-**Status: the card is built and directed-tested; the three Arcade Card discs have NOT been run.** The
-machine's load average was 38-45 for the whole session (limit for disc runs: about 20), so no disc was
-extracted or booted and no detector was run. Nothing below claims a disc picture.
+**Status: the card is built and directed-tested, and the three Arcade Card discs HAVE now been run (2026-11-09,
+section "Disc results" below): all three boot on `syscard3.pce` plus the card and match Geargrafx.**
+(The first session had load 38-45 and ran nothing.)
 
 ## What was built
 
@@ -58,19 +58,40 @@ The library's Arcade-Card titles (MAME `pcecd.xml` "Arcade System Card required"
 **Ginga Fukei Densetsu Sapphire (Japan)**, **Mad Stalker - Full Metal Force (Japan)**, **Ryuuko no Ken
 (Japan) (En,Ja,Es) (FACT)**.
 
-**Not run.** Load average at every check: 38.9, 44.6, 40.3 (limit 20). Per disc, the command to run when
-the machine is quiet (one at a time, niced, extract once, remove after):
+## Disc results (2026-11-09)
+
+One disc at a time, niced PyPy, CHD extracted once to the scratchpad and removed with `scripts/scratch.py
+remove`, `--arcade`, `syscard3.pce` read in place, 3,000 frames, RUN held 20 frames at 450. Load average
+at the starts: 18.9, 13.9, 4.2. Detector: **Geargrafx** (libretro, `scripts/beetle_press.py --core
+.../geargrafx_libretro.so`, the CHD read in place, same press), compared by eye at the same frame numbers
+(ours 341 wide, Geargrafx 256: known width difference; not pixel-compared). Beetle not tried (U38).
+`cd_boot.py` now also records `arcade_touched` (registers read/written, per-port min..max RAM address) in
+`summary.json`.
+
+| Disc | Frames, wall time | Outcome | Geargrafx | Arcade accesses | Registers / RAM touched |
+| --- | --- | --- | --- | --- | --- |
+| Ginga Fukei Densetsu Sapphire | 3,000 (1,314 s second run; 1,892 s first run at load 21; identical results) | "NOW LOADING" with the ship at 1000, then the intro demo (city at 2000, converging-lines effect at 3000); 19 drive commands, last `D8`/`D9` (audio play) at about frame 1,800; PC `$7465` at the end | the same three scenes at frames 1000, 2000, 3000 | 39 register reads (1 ID read `$FF`), 2,100,161 register writes, 2,565,120 data accesses | regs read `02-09,12-19,22-29,32-39,E0-E5,FF`; written `00,02-09,12-20,22-30,32-39,E0-E5`; RAM written port0 `000000-1BFFFF`, port2 `1C0000-1DFFFF`, port3 `1E0000-1FFFFF`; read port0 `0A0000-140A7F`. The whole 2 MiB is filled (it loads the disc into card RAM), then read back |
+| Mad Stalker - Full Metal Force | 3,000 (363 s) | Kogado logo (fading), "NOW LOADING 02" with the three mechs, then the opening cutscene (a car/figure scene at 3000); 455 drive commands (streaming reads); bus free; PC `$6078` | the same three scenes (logo fade phase and mech pose differ by animation phase) | 237,968 register reads, **0 ID reads**, 1,040,873 register writes, 1,278,464 data accesses | ports 0-2 (regs `00-04,12-14,22-24,32-34`); RAM read and written port0 across `000000-1FFFFF` (it uses the card as a 2 MiB data cache and never asks for the ID) |
+| Ryuuko no Ken | 3,000, then 3,600 (192 s / 221 s) | Opening (the broken portrait at 1000, a fight scene with Japanese caption at 2000), the Hudson/SNK title at 3000 and "PUSH RUN BUTTON" blinking from about 3100; 12 drive commands; PC `$3929` at 3600 | the same scenes at 1000, 2000 and the title from 2800 on (animation phase differs by a few frames: at 3000 ours was a white flash frame, Geargrafx the grey fade-in; both show the title at 3100-3600) | 433,699 reads (1 ID read), 34,393 register writes, 556,225 data accesses | regs read also `10,FD,FE,FF` (version, ID area); RAM written port0 `0E0000-0FFFFF`, read port0 `0E0010-100005`, port1 `0E009D-0E02D2`. ADPCM works with it: 38,971 ADPCM register writes, 47,410 samples decoded, 6 end flags |
+
+**Findings.** (1) All three Arcade Card discs run on `syscard3.pce` with the card fitted; no "Arcade System
+Card" image was needed to reach pictures, so U10k is now answered for these discs up to the point reached
+(they check the ID `$51` or not at all, and the System Card 3.0 is enough to load them). (2) No board or
+add-on bug turned up, so no code change besides the logging. (3) Sapphire, the one that stayed at the intro
+demo, is not stalled: its pictures keep changing; its last drive command is an audio play, no ADPCM use
+(0 samples). Mad Stalker likewise had 0 ADPCM samples by frame 3,000 (only the BIOS reset writes).
+(4) Untested: gameplay (no input beyond RUN), audio against Geargrafx (not rendered), and any later
+stage of any disc; the Arcade Card against hardware stays tier 5 (agreement with Geargrafx says that two
+implementations agree).
+
+Commands run, per disc (as below, with `--png-at` and `--adpcm-writes 40`):
 
 ```sh
 python3 -I scripts/scratch.py extract "/data/emu/roms-retrobat/pcenginecd/NAME.chd" $SCRATCH/NAME
 nice -n 10 .venv-pypy/bin/python scripts/cd_boot.py $SCRATCH/NAME/disc.cue --arcade \
-    --frames 3000 --png-at 1500,3000 --press-run-at 450 --hold-frames 20 --out $SCRATCH/NAME-run
+    --frames 3000 --png-at 1000,2000,3000 --press-run-at 450 --hold-frames 20 --out $SCRATCH/NAME-run
 python3 -I scripts/scratch.py remove $SCRATCH/NAME
 ```
-
-then `summary.json["arcade"]` says whether the game found the card (`id_reads`) and used it
-(`data_accesses`); the detectors are Geargrafx (`scripts/beetle_press.py` with its libretro core, Arcade
-Card by its game database) and Mednafen/Beetle (Beetle's `pce.arcadecard` option) for the first picture.
 
 ## What is not known to be enough
 
