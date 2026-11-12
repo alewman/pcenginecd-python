@@ -11,10 +11,11 @@ releases it after N frames (0 = never). Needs Pillow: system python3.
 import argparse
 import ctypes
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
-BASE = Path("/data/emu/pcengine-python")
+BASE = Path(os.environ.get("PCENGINE_PYTHON", "/data/emu/pcengine-python"))
 
 
 def main() -> int:

@@ -1,8 +1,8 @@
 # Start here: the CD-ROM² as an add-on
 
-Read the base board's [docs/cd.md](../../pcengine-python/docs/cd.md) (what the hardware is, what ran
-elsewhere), [docs/sockets.md](../../pcengine-python/docs/sockets.md) (the sockets, "What the CD needs"),
-[docs/handoff-brief.md](../../pcengine-python/docs/handoff-brief.md) (M7/M8 rows, decisions 5-10 and the
+Read the base board's [docs/cd.md](https://github.com/alewman/pcengine-python/blob/main/docs/cd.md) (what the hardware is, what ran
+elsewhere), [docs/sockets.md](https://github.com/alewman/pcengine-python/blob/main/docs/sockets.md) (the sockets, "What the CD needs"),
+[docs/handoff-brief.md](https://github.com/alewman/pcengine-python/blob/main/docs/handoff-brief.md) (M7/M8 rows, decisions 5-10 and the
 user's decisions) and MacDonald's `pcetech.txt` section 8 (`pcengine-python/reference/docs/pcetech.txt`,
 tier 2) first.
 
@@ -70,6 +70,8 @@ scripts/
   cd_boot.py   boot a disc N frames (--arcade fits the Arcade Card), log commands/registers, dump frames
   rows_png.py  pickles to PNGs (system python3, Pillow)
   scratch.py   extract a CHD once / remove the expansion (no shell rm)
+  beetle_press.py  a disc on a libretro detector (Beetle PCE, Geargrafx) with RUN pressed
+  cd_state.py  save states: the round trip on a real disc
 ```
 
 ## Save states

@@ -1,9 +1,9 @@
 # Milestone 8 record: the ADPCM unit (2026-11-06)
 
-Local only. Base board pinned at `fc923c5` (`pcengine-python`: `5befa54` plus issue 0002, the board calls
+Local only when written (on GitHub since 2026-11-11). Base board pinned at `fc923c5` (`pcengine-python`: `5befa54` plus issue 0002, the board calls
 `PortDevice.catch_up`, and issue 0003, the board mixes `audio_sources`; both are base changes with
 directed tests, described in that repository's `docs/issues/`). The M7 workaround `CdBoard` is gone.
-Tiers are those of the base board's [validation.md](../../pcengine-python/docs/validation.md).
+Tiers are those of the base board's [validation.md](https://github.com/alewman/pcengine-python/blob/main/docs/validation.md).
 
 ## What was built
 
@@ -97,4 +97,4 @@ Not re-run: the base board's 18-picture gate (no VDC/VCE code touched).
 - The ADPCM unit's real DRAM slot timing (refresh and read/write slots that Mesen2 and Geargrafx model);
   the fixed 72-clock busy is enough for the BIOS and Pyramid Plunder.
 - The 26/38-disc System Card sweeps and a lockstep: no sweep was run (IO constraint).
-- Everything stays local: no push.
+- (Then) everything stayed local; on GitHub since 2026-11-11.

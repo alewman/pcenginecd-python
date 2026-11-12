@@ -1,9 +1,9 @@
 # Milestone 7 record: the CD unit core (2026-11-05)
 
-Local only. Base board pinned at `5befa54` (`pcengine-python`, HEAD when this run started; it brings
+Local only when written (on GitHub since 2026-11-11). Base board pinned at `5befa54` (`pcengine-python`, HEAD when this run started; it brings
 huc6280-python `a379416`). **No file in `pcengine-python` was edited.** One socket gap is documented
 below (S1) and worked around in this repository. Tiers are those of the base board's
-[validation.md](../../pcengine-python/docs/validation.md): 2 hardware-verified research (pcetech), 3 manufacturer
+[validation.md](https://github.com/alewman/pcengine-python/blob/main/docs/validation.md): 2 hardware-verified research (pcetech), 3 manufacturer
 or a published measurement, 4 community, 5 emulator-derived (detectors, never judges).
 
 ## What was built
@@ -96,4 +96,4 @@ The tier-4 "CD Unit SCH.pdf" (a community redraw) was not read in this run; noth
 - ADPCM playback and the Arcade Card (M8), subchannel Q, a pure-Python CHD reader (decision 10: chdman only).
 - The 80-disc library: **no sweep** was run (IO constraint); three discs, one extraction each.
 - A lockstep against a referee; the 26/38-disc System Card sets of the M7 row.
-- No push, no remote; `pyproject.toml` pins `git+file://` so CI cannot run until both repositories are public.
+- (Then) no push, no remote, and `pyproject.toml` pinned `git+file://`; since 2026-11-11 the repository is on GitHub, pins the base board's GitHub commit, and CI runs.

@@ -70,5 +70,5 @@ Terms: arcade, ACD, `$1A00`, `$1AE0`, `$1AFE/$1AFF`, shift, rotate, 2MB, base/of
 Per MAME `hash/pcecd.xml`: Sapphire (serial HCD5080), Mad Stalker (`supported="partial"`), Ryuuko no Ken
 all carry `usage = "CD-ROM² Arcade System Card required"` and `sharedfeat requirement = pce:acardpro`.
 That is the **only** requirement any source states; none says what registers or RAM they touch, nor
-whether System Card 3.0 plus the card suffices. Still unanswered, and only a run with the ID/data access
-counters (`summary.json["arcade"]`) can answer it.
+whether System Card 3.0 plus the card suffices. Answered up to the discs' openings by the runs of 2026-11-09 with the ID/data access
+counters (`summary.json["arcade"]`, m9-record "Disc results"): System Card 3.0 plus the card suffices that far.

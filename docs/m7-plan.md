@@ -1,5 +1,9 @@
 # Milestone 7 plan: CD-ROM² boot (the CD unit core)
 
+> **A historical document:** the plan M7 was built from, kept as written. M7 is done
+> ([m7-record.md](m7-record.md)); ADPCM came in M8 and the Arcade Card in M9 (not M8, as the
+> scope line below says).
+
 Scope decided by Aubrey (base board `docs/handoff-brief.md`): CD-ROM² and the Arcade Card are **one**
 add-on repository; BIOS bring-your-own, read in place; images are bin/cue (a CHD through `chdman
 extractcd` into scratch); the CD is out of the base board's first build and arrives here.

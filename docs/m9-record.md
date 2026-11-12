@@ -1,7 +1,7 @@
 # Milestone 9 record: the Arcade Card (2026-11-07)
 
-Local only. Base board pinned at `a0114c5` (`pcengine-python` on GitHub, which brings `huc6280-python`
-v0.2.0 / f31b630). Tiers as in the base board's [validation.md](../../pcengine-python/docs/validation.md).
+Local only when written (on GitHub since 2026-11-11). Base board pinned at `a0114c5` (`pcengine-python` on GitHub, which brings `huc6280-python`
+v0.2.0 / f31b630). Tiers as in the base board's [validation.md](https://github.com/alewman/pcengine-python/blob/main/docs/validation.md).
 **Status: the card is built and directed-tested, and the three Arcade Card discs HAVE now been run (2026-11-09,
 section "Disc results" below): all three boot on `syscard3.pce` plus the card and match Geargrafx.**
 (The first session had load 38-45 and ran nothing.)
@@ -21,7 +21,7 @@ section "Disc results" below): all three boot on `syscard3.pce` plus the card an
   auto-increment, wraps at 16 / 24 bits, the 21-bit effective address, signed offsets, the three trigger
   modes and trigger 0, control keeping 7 bits, the `$1A40` mirror, banks `$40-$43`, the shift and rotate
   results, the four switches, power-on and reset, the board wiring with and without a card). The whole
-  suite is 90 tests, CPython and PyPy pass, ruff clean.
+  suite is 90 tests (95 since save states, 2 of them slow), CPython and PyPy pass, ruff clean.
 
 ## Sources, and the limit of this build
 
@@ -50,7 +50,7 @@ offset triggers, the 7-bit control, the shift/rotate arithmetic, `$10/$51`, bank
 | U10h | The rotate unit: Mednafen marks it "untested", Mesen2 "untested"; the three agree on the arithmetic | tier 5, no referee | in `write_register` |
 | U10i | The version byte `$10`: Mednafen "we should verify this"; `$1AFC/$1AFD` read 0 (Mednafen, Geargrafx), unmapped in Mesen2 | tier 5 | fixed |
 | U10j | The Arcade Card Duo's own decode of `$80-$87` is CD RAM here already; a bare-Pro `$80-$87` question is moot while the unit is fitted | `cd.md` | none |
-| U10k | **BIOS**: the library holds only the Super System Card 3.0 (`syscard3.pce`) and `disksys.rom`, no "Arcade System Card" image (MAME's Pro ROM is a baddump, and the three discs' usage line says "Arcade System Card required"). Mednafen loads the same System Card 3.0 and adds the card; this build does the same. Whether the Arcade discs run on it is **unanswered** | tier 5 | `PcEngineCd(syscard3.pce, ..., arcade_card=True)` |
+| U10k | **BIOS**: the library holds only the Super System Card 3.0 (`syscard3.pce`) and `disksys.rom`, no "Arcade System Card" image (MAME's Pro ROM is a baddump, and the three discs' usage line says "Arcade System Card required"). Mednafen loads the same System Card 3.0 and adds the card; this build does the same. Whether the Arcade discs run on it: **answered 2026-11-09 up to the point reached** (all three load and run, "Disc results") | tier 5 | `PcEngineCd(syscard3.pce, ..., arcade_card=True)` |
 
 ## The three discs (library: `/data/emu/roms-retrobat/pcenginecd/`)
 
@@ -101,9 +101,10 @@ Sapphire and the M7/M8 discs were not rerun, and Geargrafx was not rerun.
 
 ## What is not known to be enough
 
-- Whether each disc needs more than the card (ADPCM edge cases, subchannel Q, CD seek timing): **unknown**,
-  because no disc ran. Insanity-style ADPCM (the half flag) and the DRAM slot timing are the known
-  open items from M8; a game that boots to a picture on the card alone would show they are not needed.
+- Whether each disc needs more than the card (ADPCM edge cases, subchannel Q, CD seek timing): **unknown
+  past the point reached.** All three discs boot to their openings on the card alone ("Disc
+  results"), so none of these is needed that far; Insanity-style ADPCM (the half flag) and the DRAM
+  slot timing stay the known open items from M8 for anything later in a game.
 - The card against hardware: no referee exists (U10 all tier 5). If a disc runs with the same picture on
   the detectors, that says the three implementations and this one agree, not that the card is right.
 
