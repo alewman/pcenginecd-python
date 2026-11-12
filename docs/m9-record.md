@@ -93,6 +93,12 @@ nice -n 10 .venv-pypy/bin/python scripts/cd_boot.py $SCRATCH/NAME/disc.cue --arc
 python3 -I scripts/scratch.py remove $SCRATCH/NAME
 ```
 
+**Rerun 2026-11-12** after the repin to pcengine-python b914413 (core 9c47c98, decimal `ADC`/`SBC`
+with an invalid BCD digit follow Mednafen's formulas): Ryuuko no Ken and Mad Stalker, the commands
+above, with the core before (f31b630) and after. The three frames, `commands.txt`, `regs.txt` and
+every field of `summary.json` except the wall time are identical before and after (251-291 s a run).
+Sapphire and the M7/M8 discs were not rerun, and Geargrafx was not rerun.
+
 ## What is not known to be enough
 
 - Whether each disc needs more than the card (ADPCM edge cases, subchannel Q, CD seek timing): **unknown**,
