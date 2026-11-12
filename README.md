@@ -10,7 +10,7 @@ handshake, the System Card's command set), the **track table** from bin/cue (or 
 `chdman`) and **CD-DA** playback to the board's audio list.
 
 **Status (2026-11-12, release 0.1.0): built (milestones 7 to 9 of the PC Engine family).** The
-Super System Card boots; discs boot and play against the detectors' pictures (m7, m8 records); the
+Super System Card boots; the discs tried boot, compared with the detectors as the m7 and m8 records say; the
 three Arcade Card discs in the library all boot and match Geargrafx at the frames compared
 (2026-11-09); save states are the base board's and cover this machine. What was compared is first
 screens and openings, mostly by eye: no disc was played through, and nothing here was run on a
