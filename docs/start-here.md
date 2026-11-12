@@ -72,6 +72,29 @@ scripts/
   scratch.py   extract a CHD once / remove the expansion (no shell rm)
 ```
 
+## Save states
+
+The base board's `pcengine_python.state` (its docs/start-here.md "Save states") covers the CD machine:
+this package registers itself, and the unit, the SCSI bus and drive, the CD audio player, the ADPCM
+unit with its RAM, the backup RAM and the Arcade Card are reached from the board. **The disc is
+media, not state**: a state records the disc's table of contents (`Disc.state_identity`) and loading
+refuses a machine holding a disc with another one; two discs with the same layout are not told
+apart. The System Card image is named by its SHA-1, never stored.
+
+```python
+from pcengine_python.state import load_state, save_state
+
+data = save_state(system)  # system = PcEngineCd(card, disc, ...).build()
+load_state(another, data)  # built the same way: the same card, disc and Arcade Card option
+```
+
+Measured 2026-11-12 (`scripts/cd_state.py`, PyPy: every CPU bus cycle, the picture, the mixed audio
+and the CPU's state of every frame after the save, on a fresh machine and on one that had run):
+Ryuuko no Ken saved inside frame 2000 (Arcade Card, ADPCM in use; a state of 433 KiB) and Mad
+Stalker inside frame 1500 (streaming reads; 154 KiB), 60 frames each: both equal. The real System
+Card reading a synthetic disc, saved inside frame 480: equal (`tests/test_state_slow.py`). Not run:
+a save during CD audio playback of a real disc, the M7/M8 discs, Sapphire.
+
 ## Running
 
 BIOS and discs are read in place; run one niced job at a time (this board is slow by design, about

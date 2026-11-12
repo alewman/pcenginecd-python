@@ -13,6 +13,7 @@ scratch directory the caller names and deletes (`scripts/scratch.py`).
 
 from __future__ import annotations
 
+import hashlib
 import re
 import subprocess
 from dataclasses import dataclass, field
@@ -73,10 +74,19 @@ class _Segment:
 class Disc:
     """A sector store plus a TOC. `sector_count` is the number of LBAs."""
 
+    #: Media, not state (pcengine_python.state): a save state names the disc, it does not hold it.
+    STATE_FIXED = True
+
     def __init__(self, tracks: list[Track], segments: list[_Segment]) -> None:
         self.tracks = tracks
         self._segments = segments
         self.sector_count = max((s.lba + s.count for s in segments), default=0)
+
+    def state_identity(self) -> str:
+        """What a save state records of the disc: its table of contents (not its sectors, so two
+        discs with one layout are not told apart)."""
+        toc = [(t.number, t.is_data, t.start, t.end) for t in self.tracks]
+        return hashlib.sha1(repr((toc, self.sector_count)).encode()).hexdigest()
 
     # -- construction -------------------------------------------------------------------------
 
