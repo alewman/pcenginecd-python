@@ -42,6 +42,9 @@ for _ in range(900):
 rows = cd.board.capture.last_frame.rows  # 242 rows of 9-bit palette values
 ```
 
+Third-party notice: the seek-time model derives from Dave Shadoff's MIT-licensed measurements
+([NOTICE.md](NOTICE.md)).
+
 Save states: `pcengine_python.state.save_state(system)` and `load_state`
 ([docs/start-here.md](docs/start-here.md) "Save states"; the disc is named, not stored). Paths
 under `/data/emu/` in the documents and the scripts' defaults (the library, the System Card at
