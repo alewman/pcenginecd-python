@@ -27,6 +27,8 @@ SYNC = bytes([0x00] + [0xFF] * 10 + [0x00])
 
 
 def to_bcd(value: int) -> int:
+    """Two BCD digits: defined for 0-99 (track numbers, and MSF fields of discs under 100
+    minutes); larger values do not fit (issue 0001 item 5, unreachable on a real disc)."""
     return ((value // 10) << 4) | (value % 10)
 
 
@@ -104,6 +106,8 @@ class Disc:
                 path = cue_path.parent / m.group(1)
                 files.append((path, path.stat().st_size // RAW_SECTOR))
             elif m := re.match(r"TRACK\s+(\d+)\s+(\S+)", line, re.I):
+                if not files:
+                    raise ValueError(f"{cue_path}: TRACK before any FILE")
                 mode = m.group(2).upper()
                 if mode not in ("AUDIO", "MODE1/2352"):
                     raise ValueError(f"{cue_path}: unsupported track mode {mode}")
@@ -111,6 +115,8 @@ class Disc:
                     {"number": int(m.group(1)), "is_data": mode != "AUDIO", "file": len(files) - 1}
                 )
             elif m := re.match(r"INDEX\s+(\d+)\s+(\d+):(\d+):(\d+)", line, re.I):
+                if not entries:
+                    raise ValueError(f"{cue_path}: INDEX before any TRACK")
                 frames = msf_frames(int(m.group(2)), int(m.group(3)), int(m.group(4)))
                 entries[-1][f"idx{int(m.group(1))}"] = frames
             elif line.upper().startswith("PREGAP"):

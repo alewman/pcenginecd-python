@@ -1,9 +1,10 @@
 """The CD unit: the expansion-port device that owns `$1800-$18FF`, CD RAM and the backup RAM.
 
 It plugs into the base board's socket 2 (`PortDevice`): `claims()` lists the pages, every access
-carries its master-clock time, `catch_up(mclk)` runs the drive up to it (the board calls it every
-cycle, base issue 0002), `present` pulls the I/O port's bit 7 low, and IRQ2 is the
-board's wired-OR line with this unit's own bit, "cd".
+carries its master-clock time, `catch_up(mclk)` runs the drive up to it (the board calls it at every
+advance, base issue 0002; a register access also brings the drive's clock to its own time),
+`present` pulls the I/O port's bit 7 low, and IRQ2 is the board's wired-OR line with this unit's
+own bit, "cd".
 
 Registers [hw: pcetech 8 for the names; the bit-level behaviour is emulator-derived, tier 5, and
 each is marked]:
@@ -92,6 +93,8 @@ class CdUnit:
         self.ram = bytearray(CD_RAM_BYTES)
         self.bram = bytearray(BRAM_BYTES)
         header = BRAM_FORMATTED if bram is None else bram
+        if len(header) > BRAM_BYTES:
+            raise ValueError(f"bram= holds {len(header)} bytes; the backup RAM is {BRAM_BYTES}")
         self.bram[: len(header)] = header
         self.bram_locked = True  # [hw: pcetech 8] locked at power-up
         self.arcade = (
@@ -133,16 +136,31 @@ class CdUnit:
             self.arcade.reset(kind)
         if kind is ResetKind.POWER_ON:
             self.bram_locked = True
+            self.bus.rst = False  # the reset register is cleared below: RST lets go
             self.bus.reset()
-            self.adpcm.power_on()
+            self.adpcm.power_on(self.mclk)
             self.enable = self.active = self.reset_register = 0
             self.right_channel = False
             self.sample_latch = 0
+            self._latch_guard_until = 0  # issue 0001 item 3: the unit's own timers go too
+            self._dma_at = None
+            self._next_event = self._soonest()
             self._update_irq()
 
     def catch_up(self, mclk: int) -> None:
+        """The board's call, at every advance: do whatever falls due. While nothing is due the
+        drive's clock is left where it is (a cheap early-out); `_run_now` brings it to the
+        present before a register access."""
         if self._next_event is None or mclk >= self._next_event:
             self._run(mclk)
+        self.mclk = mclk
+
+    def _run_now(self, mclk: int) -> None:
+        """Bring the drive, the ADPCM unit and the DMA to `mclk` even when no event is due, so a
+        timer that a register access starts counts from that access (issue 0001 item 1: before,
+        `ScsiBus.now` stood at the last event while another one waited in the future, and a SEL
+        written a second after CD audio started got its command phase at once)."""
+        self._run(mclk)
         self.mclk = mclk
 
     def _run(self, mclk: int) -> None:
@@ -226,12 +244,12 @@ class CdUnit:
     def read(self, address: int, mclk: int) -> int:
         page = address >> 8
         if self.arcade is not None and (page < 0x1000 or page == ARCADE_REGISTER_PAGE):
-            return self.arcade.read(address, mclk)  # no clock: skip the catch-up
-        self.catch_up(mclk)
+            return self.arcade.read(address, mclk)  # the card has no clock
         if CD_RAM_PAGES[0] <= page <= CD_RAM_PAGES[1]:
-            return self.ram[address & 0xFFFF]
+            return self.ram[address & 0xFFFF]  # memory: no clock either
         if BRAM_PAGES[0] <= page <= BRAM_PAGES[1]:
             return 0xFF if self.bram_locked else self.bram[address & 0x7FF]
+        self._run_now(mclk)
         return self._read_register(address & 0xFF, mclk)
 
     def write(self, address: int, value: int, mclk: int) -> None:
@@ -239,14 +257,15 @@ class CdUnit:
         if self.arcade is not None and (page < 0x1000 or page == ARCADE_REGISTER_PAGE):
             self.arcade.write(address, value, mclk)
             return
-        self.catch_up(mclk)
         if CD_RAM_PAGES[0] <= page <= CD_RAM_PAGES[1]:
             self.ram[address & 0xFFFF] = value
-        elif BRAM_PAGES[0] <= page <= BRAM_PAGES[1]:
+            return
+        if BRAM_PAGES[0] <= page <= BRAM_PAGES[1]:
             if not self.bram_locked:
                 self.bram[address & 0x7FF] = value
-        else:
-            self._write_register(address & 0xFF, value, mclk)
+            return
+        self._run_now(mclk)
+        self._write_register(address & 0xFF, value, mclk)
         self._dma_arm()
         self._next_event = self._soonest()
 

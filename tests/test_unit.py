@@ -93,7 +93,8 @@ def test_1803_bit1_is_the_channel_flag_toggled_by_1805_with_a_guard():
     assert h.r(3) & 0x02
 
 
-def test_reset_register_clears_drive_irq_enables_and_blocks_new_irqs():
+def test_reset_register_clears_drive_irq_enables_and_the_drive_works_after_release():
+    # (the blocking while held: tests/test_issue0001.py)
     unit, _irq, h = make(disc_data_only())
     h.w(2, 0x70)
     h.w(4, 0x02)

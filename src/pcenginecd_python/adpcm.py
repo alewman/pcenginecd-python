@@ -150,13 +150,14 @@ class Adpcm:
         self._set_half(False)
         self._set_end(False)
 
-    def power_on(self) -> None:
+    def power_on(self, at: int = 0) -> None:
+        """Power-on at master clock `at` (the output goes idle then, issue 0001 item 3)."""
         self.reset()
         self.control = self.dma = self.rate = 0
         self.read_buffer = 0
         self.playing = False
         self._read_due = self._write_due = None
-        self._output(0, 0)
+        self._output(at, 0)
 
     # -- flags --------------------------------------------------------------------------------
 

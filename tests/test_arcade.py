@@ -116,6 +116,12 @@ def test_increment_wraps_the_offset_at_16_bits_and_the_base_at_24_bits():
     card.write(port(1) + 9, 0x11)
     card.read(port(1))
     assert [card.read(port(1) + i) for i in (2, 3, 4)] == [1, 0, 0]
+    # the carry crosses bit 16 into the top byte (a 16-bit wrap would leave $12 there)
+    set_base(card, 2, 0x12FFFF)
+    set_increment(card, 2, 2)
+    card.write(port(2) + 9, 0x11)
+    card.read(port(2))
+    assert [card.read(port(2) + i) for i in (2, 3, 4)] == [1, 0, 0x13]
 
 
 def test_effective_address_is_21_bits():

@@ -128,6 +128,12 @@ class ScsiBus:
     # Mednafen sends 2, 3, 4 ("returned data lengths on real PCE are not confirmed", its own
     # comment); Mesen2 sends 4, 4, 4 (C15). Tier 5 both; the BIOS must read the same number.
     TOC_ANSWER_BYTES = (2, 3, 4)
+    # An opcode the drive does not know (C22): Good status with no data [emu: Mesen2, Geargrafx],
+    # or CHECK CONDITION with ILLEGAL REQUEST / INVALID COMMAND for REQUEST SENSE to report
+    # [emu: Mednafen `scsicd.cpp`; the SCSI-2 rule for an unsupported opcode, which this drive is
+    # not known to follow]. True selects the second. Either way the answer comes at the first
+    # byte (Mednafen first waits for its opcode group's CDB length).
+    UNKNOWN_COMMAND_CHECK_CONDITION = False
 
     def __init__(
         self,
@@ -143,6 +149,10 @@ class ScsiBus:
         self.now = 0
         self.log: list[tuple[int, str]] = []  # (mclk, text) of commands, for the tests and runs
         self.record_log = False
+        self._irq_levels = (False, False)
+        # The RST line is the CPU's (`$1804` bit 1): a reset does not let go of it, so the drive
+        # stays in reset while the bit is held (issue 0001; Mesen2 the same).
+        self.rst = False
         self.reset()
 
     # -- state ---------------------------------------------------------------------------------
@@ -150,7 +160,6 @@ class ScsiBus:
     def reset(self) -> None:
         self.bsy = self.sel = self.cd = self.io = self.msg = self.req = self.ack = False
         self.atn = False
-        self.rst = False
         self.phase = Phase.BUS_FREE
         self.data_port = 0  # what the CPU wrote
         self.read_port = 0  # what the drive presents
@@ -168,8 +177,7 @@ class ScsiBus:
         self.sense_key = 0
         self.sense_asc = 0
         self.cdda.stop()
-        self._irq_levels = (False, False)
-        self._update_irq()
+        self._update_irq()  # REQ is down: a level that was up is reported dropped (issue 0001)
 
     @property
     def status_bits(self) -> int:
@@ -356,9 +364,12 @@ class ScsiBus:
         elif self._handshake_done() and self.cmd:
             length = COMMAND_LENGTH.get(self.cmd[0])
             if length is None:
-                # An unknown command: Good, no data [emu: Mesen2]
+                # An unknown command (C22, `UNKNOWN_COMMAND_CHECK_CONDITION`)
                 self.cmd.clear()
-                self.status_message(GOOD)
+                if self.UNKNOWN_COMMAND_CHECK_CONDITION:
+                    self._fail(SENSE_ILLEGAL_REQUEST, ASC_INVALID_COMMAND)
+                else:
+                    self.status_message(GOOD)
             elif len(self.cmd) >= length:
                 cmd, self.cmd = self.cmd, []
                 self._execute(cmd)
