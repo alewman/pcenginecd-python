@@ -98,3 +98,5 @@ Not re-run: the base board's 18-picture gate (no VDC/VCE code touched).
   the fixed 72-clock busy is enough for the BIOS and Pyramid Plunder.
 - The 26/38-disc System Card sweeps and a lockstep: no sweep was run (IO constraint).
 - (Then) everything stayed local; on GitHub since 2026-11-11.
+
+**Rerun 2026-11-13 (issue 0001, the drive's clock at register accesses):** Addams Family, Insanity and Pyramid Plunder rerun: pictures and ADPCM sample counts identical before and after, same commands as above; see [issues/0001](issues/0001-findings-from-the-rust-port.md) "The discs, before and after".

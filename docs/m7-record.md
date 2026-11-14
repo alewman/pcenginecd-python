@@ -69,7 +69,7 @@ s a frame), 1.4 s a frame at load average 45. A reference board, not a fast one.
 
 | Id | Entry | Sources and tier | Built as |
 | --- | --- | --- | --- |
-| U8 | Drive timings: SEL to command phase 25,000 ticks, TEST UNIT READY 150,000 ticks (about 100x shorter than real), TOC 3,000, status 1,000, abort 300,000, ACK pulse 21 clocks; a tick is 3 master clocks | Mesen2 comments citing test ROMs on hardware (tier 5, claimed) | `ScsiBus` class attributes `SEL_TO_COMMAND_PHASE`, `TEST_UNIT_READY`, ... |
+| U8 | Drive timings: SEL to command phase 25,000 ticks, TEST UNIT READY 150,000 ticks (about 100x shorter than real), TOC 3,000, status 1,000, abort 300,000, ACK pulse 21 clocks; a tick is 3 master clocks | Mesen2 comments citing test ROMs on hardware (tier 5, claimed) | `ScsiBus` class attributes `SEL_TO_COMMAND_PHASE`, `TEST_UNIT_READY`, ...; each counts from the register access that starts it (until issue 0001, 2026-11-13, from the drive's last event while another was pending) |
 | U8 | Sector rate: one sector's bytes every 286,363 clocks (75 a second) | Red Book rate, tier 2-3; the delivery phase relative to the READ is undecidable | `ScsiBus.SECTOR_CLOCKS` |
 | U8 | Re-read after a missed sector: 290 ms | Mesen2 (Sherlock Holmes), tier 5 | `REREAD_PENALTY_MS` |
 | U8 | `$1805` second write within 700 clocks ignored | Mesen2 test ROM, tier 5 | `CdUnit.CHANNEL_LATCH_GUARD` |
@@ -86,6 +86,7 @@ s a frame), 1.4 s a frame at load average 45. A reference board, not a fast one.
 | C18 | READ(6) with count 0 transfers nothing (Good status) | Mesen2; Mednafen reads 256 as SCSI-2 says (tier 5) | `ScsiBus._read` |
 | C19 | AUDIO START holds BUSY until the seek ends, then Good (Mednafen answers Good at once) | Mesen2 vs Mednafen, tier 5 | `ScsiBus._audio_start` |
 | C21 | pcetech names `$1804` "bit 2" and the BIOS writes `$02`: bit 1 in 0-based counting | pcetech tier 2 text, BIOS behaviour | reset = value & 2 |
+| C22 | An unknown opcode: Good status, no data (Mesen2, Geargrafx) or CHECK CONDITION with ILLEGAL REQUEST / INVALID COMMAND (`$05`/`$20`) for REQUEST SENSE (Mednafen; SCSI-2's rule, which this drive is not known to follow). The answer comes at the first byte either way (Mednafen first waits for the opcode group's CDB length). Added 2026-11-13 (issue 0001 item 5) | tier 5 both | `ScsiBus.UNKNOWN_COMMAND_CHECK_CONDITION` (False: Good; both tested) |
 | U38 | Beetle PCE in the libretro host does not leave the splash after RUN | measured here | not investigated |
 | U16 | Which emulator is closest for the CD: Geargrafx and this board agree on three titles; Beetle undecided | measured here | no referee |
 
@@ -97,3 +98,5 @@ The tier-4 "CD Unit SCH.pdf" (a community redraw) was not read in this run; noth
 - The 80-disc library: **no sweep** was run (IO constraint); three discs, one extraction each.
 - A lockstep against a referee; the 26/38-disc System Card sets of the M7 row.
 - (Then) no push, no remote, and `pyproject.toml` pinned `git+file://`; since 2026-11-11 the repository is on GitHub, pins the base board's GitHub commit, and CI runs.
+
+**Rerun 2026-11-13 (issue 0001, the drive's clock at register accesses):** Addams Family, Insanity and Pyramid Plunder rerun before and after, same commands as above; see [issues/0001](issues/0001-findings-from-the-rust-port.md) "The discs, before and after".

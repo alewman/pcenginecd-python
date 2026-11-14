@@ -115,3 +115,5 @@ by `git+https://github.com/alewman/pcengine-python`; the core arrives as huc6280
 `HuC6280.opcode` exists; supergrafx-python keeps its `_opcode` fallback, tested). Tests: supergrafx 38 pass
 on CPython and PyPy, pcenginecd 90 pass on both; ruff check and format clean in both. The System Card
 boot slow test was **not run** (load above 20).
+
+**Rerun 2026-11-13 (issue 0001, the drive's clock at register accesses):** all three Arcade Card discs rerun: pictures and Arcade Card counts identical; Mad Stalker polls READ SUBQ 394 times instead of 423 during its CD-audio wait, Geargrafx still shows the same scenes before and after, same commands as above; see [issues/0001](issues/0001-findings-from-the-rust-port.md) "The discs, before and after".

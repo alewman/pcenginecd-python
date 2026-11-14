@@ -30,7 +30,7 @@ drive's firmware is not emulated; the controller is a bus state machine
 | 1 HuCard slot | `SystemCard(RomCard)`: the BIOS image mirrored through `$00-$67`, Super RAM `$68-$7F` (a card is not confined to the ROM window), the id registers it answers through the unit |
 | 2 expansion port | `CdUnit` is the `PortDevice`: claims pages `$1000-$10FF` (CD RAM), `$1EE0-$1EE7` (BRAM), `$1FF8` (registers) and, with an Arcade Card fitted, `$0800-$087F` and `$1FFA`; `present` drives I/O bit 7 low |
 | 3 one decode | all three claims replace the base page handlers; the card's own claim covers `$00-$7F` |
-| 5 clock domains | `CdUnit.catch_up(mclk)` runs the drive; the board calls it every advance (finding S1 below, fixed in the base by issue 0002) |
+| 5 clock domains | `CdUnit.catch_up(mclk)` runs the drive; the board calls it every advance (finding S1 below, fixed in the base by issue 0002); it does what falls due and otherwise leaves the drive's clock alone, so every `$1800-$18FF` access first brings the drive to its own time (`_run_now`, issue 0001) |
 | 6 interrupts | the unit's bit `"cd"` on `board.irq2`: set while `(enable mask & active bits) != 0` |
 | 9 audio | `CddaPlayer` and `AdpcmSource` appended to `board.audio_sources` (44.1 kHz stereo, `take_samples(mclk)`); the base `Mixer` sums them (`Board.take_audio()`) |
 | 10 reset | `reset(ResetKind.POWER_ON)` re-locks BRAM and clears the bus; the CD is reset by `$1804` bit 1 inside the unit |
