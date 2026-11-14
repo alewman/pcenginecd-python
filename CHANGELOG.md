@@ -2,7 +2,9 @@
 
 Releases are git tags. Not on PyPI (the base board is pinned by git commit).
 
-## Unreleased
+## 0.2.0 (2026-11-14)
+
+- Base board: pcengine-python 0.2.0 (core huc6280-python 0.4.0; the board's issue 0004).
 
 Issue 0001 (what the Rust port found), settled: [docs/issues/0001](docs/issues/0001-findings-from-the-rust-port.md).
 
