@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Boot a disc on the CD board for N frames; log the drive's commands; save pictures.
 
     nice -n 10 .venv-pypy/bin/python scripts/cd_boot.py DISC.cue --frames 900 \
@@ -7,7 +8,7 @@
 DISC is a `.cue` (a bin/cue pair, for instance extracted from a CHD with `chdman extractcd` into
 the scratchpad: `scripts/scratch.py extract GAME.chd DIR`) or a `.chd` (extracted once into
 `--scratch DIR`, which the caller deletes with `scripts/scratch.py remove DIR`). The System Card is
-bring-your-own, read in place (default: the Batocera BIOS pack). One run, niced: this board is
+bring-your-own, read in place (default: `$PCE_SYSTEM_CARD`). One run, niced: this board is
 slow by design (a reference board, not a fast one), and the machine is shared.
 
 Writes to RUNDIR: `frameNNNNN.pkl` pictures (9-bit rows + the VCE's RGB table; turn them into
@@ -20,11 +21,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
 
-DEFAULT_CARD = "/data/emu/share/batocera/bios/syscard3.pce"
+# The System Card: --system-card, else $PCE_SYSTEM_CARD (the player's own image, never in the repository).
+DEFAULT_CARD = os.environ.get("PCE_SYSTEM_CARD", "syscard3.pce")
 
 
 def save_frame(board, path: Path) -> None:

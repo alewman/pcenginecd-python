@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The CD machine through the base board's sockets, with a scripted CPU and a synthetic System Card
 (nothing of Hudson's code is in this repository; the real card is only used by scripts/)."""
 

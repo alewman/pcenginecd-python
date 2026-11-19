@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# The Super System Card id-register values are MAME's pce_scdsys.cpp (BSD-3-Clause, copyright
+# Fabio Priuli, Wilbert Pol): facts, no code; notice in NOTICE.md.
 """The System Card: a HuCard holding the BIOS, and on a Super System Card 192 KiB more RAM.
 
 [hw: pcetech 8, 8.1] The Super System Card (v3.0) maps 192 KiB of RAM at banks `$68-$7F` and

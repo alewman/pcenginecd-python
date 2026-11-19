@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Run Beetle PCE (libretro, detector, tier 5) on a CD with RUN held from frame N, save the picture.
 
     python3 -I scripts/beetle_press.py DISC.chd --frames 900 --press-at 300 --png out.png [--hold 0]
@@ -15,7 +16,9 @@ import os
 import sys
 from pathlib import Path
 
-BASE = Path(os.environ.get("PCENGINE_PYTHON", "/data/emu/pcengine-python"))
+BASE = Path(
+    os.environ.get("PCENGINE_PYTHON", Path(__file__).resolve().parents[2] / "pcengine-python")
+)
 
 
 def main() -> int:
@@ -26,7 +29,12 @@ def main() -> int:
     ap.add_argument("--hold", type=int, default=0)
     ap.add_argument("--png", type=Path, required=True)
     ap.add_argument("--audio", type=Path)
-    ap.add_argument("--system", type=Path, default=Path("/data/emu/share/batocera/bios"))
+    ap.add_argument(
+        "--system",
+        type=Path,
+        default=Path(os.environ.get("PCE_SYSTEM_CARD", "syscard3.pce")).parent,
+        help="the libretro system directory (default: the folder of $PCE_SYSTEM_CARD)",
+    )
     ap.add_argument(
         "--core", type=Path, default=BASE / "reference/src/beetle-pce/mednafen_pce_libretro.so"
     )

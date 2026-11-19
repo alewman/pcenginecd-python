@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 # Restart: the drive's bus, rewritten clean (2026-11-19)
 
 The provenance audit of 2026-11-13 ([provenance.md](provenance.md)) marked one part of this add-on
@@ -75,3 +76,59 @@ value; the closed box disagrees (below).
 
 The results before and after, and what a Rust transcription must carry, are in
 [provenance.md](provenance.md) ("Clean rewrite, 2026-11-19").
+
+## Repin to the clean base board (2026-11-19)
+
+After the drive's rewrite, the base board's own clean rewrite (pcengine-python 3318027: a new VDC
+line machine from Hudson's manual, pcetech and MAME's BSD-3 files; core huc6280-python 6ce348e)
+became this add-on's pin. Neither commit is on GitHub yet: `pyproject.toml` names the full hash on
+GitHub as usual, and until Aubrey pushes both, the venvs are installed from the local clones:
+
+```sh
+for v in .venv-pypy .venv; do
+  $v/bin/python -m pip install --force-reinstall --no-deps \
+    "git+file://$PWD/../huc6280-python@6ce348e13c9ef3009bd07e7938c4b48956eeadc6" \
+    "git+file://$PWD/../pcengine-python@3318027e5c34f1e211515f95233a0853938a5f53"
+done
+```
+
+**Interfaces.** Nothing in this add-on used what the base board removed (`vertical_at_line_start`,
+`latch_byr`, `latch_bxr`, `_step_bg_y`, `line_counter_step`, `commit_unless_dma`,
+`force_complete`, `SAT_DOTS`, `DMA_DOTS_PER_WORD`, `CLOCKS_PER_SPRITE`): the CD unit is a port
+device and an audio source on the base board's sockets. No code adaptation was needed. Save states
+from the old pin do not load (the base board's sequencer state changed).
+
+**The judges, before (base 4c32f26, the drive rewrite's final runs) and after (base 3318027).**
+Niced PyPy, `PYPY_GC_NURSERY=1M`; the six disc boots exactly as the drive rewrite ran them
+(`scripts/cd_boot.py`, `syscard3.pce` from `$PCE_SYSTEM_CARD`, 3,000 frames, RUN held 20 frames at
+450, `--png-at 1000,2000,3000`, `--adpcm-writes 40`, `--arcade` for the first three; CHDs extracted
+one per run into the scratchpad and removed after).
+
+- Quick suite: 104 passed before and after (PyPy and CPython).
+- Slow System Card boot and the save state taken while the BIOS reads: pass before and after
+  (2 passed).
+- Disc boots:
+
+| Disc | Drive commands | ADPCM samples (ends) | Pictures 1000 / 2000 / 3000 | Command times |
+| --- | --- | --- | --- | --- |
+| Ryuuko no Ken (Arcade) | 12 / 12, same texts | 47,410 / 47,410 (6) | identical, 8 dots left | 18-45 clocks earlier |
+| Mad Stalker (Arcade) | 411 / 411, same texts | 0 / 0 | identical, 8 dots left | -52 to +164 clocks |
+| Ginga Fukei Densetsu Sapphire (Arcade) | 19 / 19, same texts | 0 / 0 | identical, 8 dots left | 18-45 clocks earlier |
+| Pyramid Plunder | 12 / 12, same texts | 114,688 / 114,688 (2) | identical, 8 dots left | 16-55 clocks earlier |
+| The Addams Family | 18 / 18, same texts | 536,583 / 536,583 (1) | identical, 8 dots left | -45 to +2,316 clocks |
+| Insanity | 10 / 10, same texts | 0 / 0 | identical, 8 dots left | 28-45 clocks earlier |
+
+  "Identical, 8 dots left": every one of the 242 rows of every picture equals the old picture's row
+  moved 8 dots left (the base board's display now starts 8 dots earlier in the row), at the 9-bit
+  value. The ADPCM register logs are the same; the final PCs differ by 0-8 bytes (Ryuuko `$8B9A`
+  / `$8BA2`, Addams `$41A5` / `$41A7`), presumably the same wait loops caught at another phase
+  (the CPU's phase against the beam moved with the new line machine; not checked further). Because every
+  picture is the same picture, the comparison with Geargrafx recorded in provenance.md ("Clean
+  rewrite, 2026-11-19") stands unchanged; Geargrafx (the closed box) was not rerun, as nothing on
+  its side moved.
+
+**What pcenginecd-rust must carry**: nothing of this add-on's behaviour changed; it takes the base
+board's changes through its pcengine-rust pin (pcengine-python `docs/restart.md`, "What the Rust
+transcription must carry"). Comments and headers only otherwise: SPDX headers, the NOTICE.md
+entries for MAME's BSD-3 files, and `$PCE_SYSTEM_CARD` in the scripts and slow tests in place of
+a machine path.

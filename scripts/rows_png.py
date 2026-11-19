@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Turn the `frameNNNNN.pkl` files of a `cd_boot.py` run into PNGs (needs Pillow: system python3).
 
     python3 -I scripts/rows_png.py RUNDIR [--scale 2]

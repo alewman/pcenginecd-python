@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Issue 0001 (findings from the Rust port): one directed test per settled item."""
 
 import pytest

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Synthetic discs for the tests: nothing here is a real disc, a real sector, or anything copied."""
 
 from __future__ import annotations

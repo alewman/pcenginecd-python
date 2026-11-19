@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The CD unit's registers, RAM, BRAM, IRQ2 and the ADPCM register port."""
 
 from discs import disc_data_only

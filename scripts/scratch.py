@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Scratch-directory helper: expand a CHD once, remove the expansion later (no shell `rm`).
 
     python3 scripts/scratch.py extract GAME.chd DIR     # chdman extractcd, niced, into DIR

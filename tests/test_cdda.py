@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CD-DA: audio start/end/pause, READ SUBQ, the sample source, the $1805 latch, the fader."""
 
 import struct

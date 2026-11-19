@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Boot the real Super System Card (bring-your-own, read in place) with a synthetic data disc.
 
 Slow (about two minutes on PyPy under load: `pytest -m slow`) and skipped when the BIOS is not on
@@ -7,6 +8,7 @@ drive is selected, and the BIOS's own commands (TEST UNIT READY, READ TOC, READ)
 SCSI path. Nothing of the BIOS is stored in the repository.
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -15,11 +17,13 @@ from pcengine_python import pads
 
 from pcenginecd_python import PcEngineCd
 
-BIOS = Path("/data/emu/share/batocera/bios/syscard3.pce")
+# The System Card is the player's own image, named by $PCE_SYSTEM_CARD (never a path in
+# the repository).
+BIOS = Path(os.environ.get("PCE_SYSTEM_CARD", "/nonexistent/syscard3.pce"))
 
 pytestmark = [
     pytest.mark.slow,
-    pytest.mark.skipif(not BIOS.exists(), reason="syscard3.pce not on this machine"),
+    pytest.mark.skipif(not BIOS.exists(), reason="PCE_SYSTEM_CARD not set"),
 ]
 
 

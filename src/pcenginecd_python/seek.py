@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# The zone table and the model's shape derive from Dave Shadoff's seektime.c (PCECD_seek), MIT,
+# Copyright (c) 2019 David Shadoff: notice in NOTICE.md.
 """Seek time between two sectors, from Dave Shadoff's measurements on re-capped original hardware
 (`reference/src/pce-cd-seek`, `seektime.c` and `measurements/`; MIT). Tier 3: measured by a
 person who published the method, not a manufacturer; resolution is one VSYNC (1/60 s).

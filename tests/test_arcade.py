@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The Arcade Card: ports, auto-increment, the offset triggers, the shift unit, ID and mirrors.
 
 The semantics are those the three emulator sources agree on (tier 5, arcade.py); the tests state

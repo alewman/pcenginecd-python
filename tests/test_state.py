@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Save states: the base board's `state.py` over the CD machine (unit, drive, ADPCM, Arcade Card).
 
 The card here is NOPs; the run that exercises the drive is tests/test_state_slow.py."""

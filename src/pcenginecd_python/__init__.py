@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """pcenginecd-python: the CD-ROM² / Super CD-ROM² add-on to pcengine-python, through its sockets."""
 
 from pcengine_python.state import register_package

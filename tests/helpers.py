@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """A host that talks to the CD unit the way the System Card does (handshakes through
 `$1800-$1802`, `$1801`/`$1808`), and a scripted CPU for the board-level tests."""
 

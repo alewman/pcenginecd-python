@@ -1,8 +1,23 @@
+<!-- SPDX-License-Identifier: MIT -->
 # Changelog
 
 Releases are git tags. Not on PyPI (the base board is pinned by git commit).
 
 ## Unreleased
+
+Repin to the base board's clean rewrite (docs/restart.md, "Repin to the clean base board"):
+
+- Base board pcengine-python **3318027** (its clean VDC rewrite; core huc6280-python 6ce348e),
+  not yet on GitHub: the venvs install it from the local clones (pin comment). Save states from
+  the old pin do not load. No code used the removed base interfaces; nothing to adapt.
+- Judges: 104 quick tests and the two slow tests pass; the six disc boots give the same command
+  texts, ADPCM counts and pictures (moved 8 dots left in the row with the base display), command
+  times within a few dozen clocks (Addams up to 2,316).
+- NOTICE.md: MAME's BSD-3-Clause files the add-on takes facts from (`pce_scdsys.cpp` id bytes,
+  `msm5205.cpp` step formula, `nec/pce_cd.cpp` drive facts, `pce_acard.cpp`), with copyright
+  holders and the licence text. SPDX headers on every file.
+- The System Card is named by `$PCE_SYSTEM_CARD` in the scripts and slow tests (no machine path);
+  the base board's checkout defaults to the sibling `../pcengine-python`.
 
 The clean rewrite of the drive's bus (docs/restart.md; the provenance audit's one **rewrite**
 item). Before and after: docs/provenance.md, "Clean rewrite, 2026-11-19".

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 # Provenance
 
 ## Licence provenance (audit 2026-11-13)
@@ -28,7 +29,7 @@ BSD-3 sources.
 | `tests/` | our own tests | **clean** |
 | `docs/arcade-sources.md` | quoted the MiSTer core's Verilog constants (GPL) and named a machine path and a BIOS file's hashes | **done 2026-11-19**: the fragments, the path and the hashes dropped; the facts re-cited to MAME and ares |
 
-Counts (2026-11-13): clean 6, cite 5, rewrite 1, unclear 0. After the clean rewrite (2026-11-19): rewrite 0; see below.
+Counts (2026-11-13): clean 6, cite 5, rewrite 1, unclear 0. After the clean rewrite (2026-11-19): rewrite 0; see below. After the notices of 2026-11-19 (below): **clean 12, cite 0, rewrite 0, unclear 0**.
 
 Inherited: this add-on runs on pcengine-python, whose VDC line machine is marked **rewrite** there.
 
@@ -50,7 +51,7 @@ choice; none was carried over from the withdrawn module.
 | `scsi.py` (new) | SCSI-1; pcetech 8; Hudson CD System BIOS manual and the System Card 3.00 disassembly (Hudson documents in the MiSTer repository's `docs/`); Shadoff's seek model (MIT, `seek.py`); MAME `nec/pce_cd.cpp` (BSD-3) and ares `pce/pcd` (ISC) for facts, nothing ported; closed-box Geargrafx | **clean** |
 | `scripts/drive_probe.py` (new) | our probe program and libretro host; runs GPL cores as libraries, reads only their work RAM | **clean** (tool) |
 | `unit.py` | `CHANNEL_LATCH_GUARD` and the `$180B` bit-0 rule now also closed-box measured; `DMA_BYTE_CLOCKS` stays a reported test-ROM value (open: the closed box disagrees) | **clean** |
-| `arcade.py`, `adpcm.py`, `cdda.py`, `disc.py` | GPL file and function names removed from comments; facts re-cited to MAME, ares, the Hudson manual or closed-box observation | **clean** (the cite actions for these files are done, except NOTICE.md entries for MAME's id bytes and step formula, still owed) |
+| `arcade.py`, `adpcm.py`, `cdda.py`, `disc.py` | GPL file and function names removed from comments; facts re-cited to MAME, ares, the Hudson manual or closed-box observation | **clean** (the cite actions for these files are done; the NOTICE.md entries for MAME's id bytes and step formula were added on 2026-11-19, below) |
 | `docs/arcade-sources.md`, `docs/m7-record.md`, `docs/m8-record.md` | Verilog fragments, machine path, hashes and a GPL identifier removed; U8 rows re-sourced | **clean** |
 
 ### The judges, before and after
@@ -171,3 +172,17 @@ hardware seek measurements (tier 3), which outrank the closed box.
 - `CddaPlayer.start` (new read-only property) is the last AUDIO START's sector.
 - No other module's behaviour changed: `unit.py`, `adpcm.py`, `arcade.py`, `cdda.py`, `disc.py`
   changed comments only (plus `start`).
+
+## Notices and headers, 2026-11-19 (after the base board's repin)
+
+The cite items' last actions, done; no behaviour changed.
+
+| Item | What was done |
+| --- | --- |
+| `syscard.py` (id bytes) | NOTICE.md: MAME `src/devices/bus/pce/pce_scdsys.cpp`, BSD-3-Clause, copyright Fabio Priuli, Wilbert Pol (licence line checked), with the BSD-3 text; a header line in the file |
+| `adpcm.py` (MSM5205 step formula) | NOTICE.md: MAME `src/devices/sound/msm5205.cpp`, BSD-3-Clause, copyright Aaron Giles |
+| `scsi.py` (command table facts) | NOTICE.md: MAME `src/mame/nec/pce_cd.cpp`, BSD-3-Clause, copyright Wilbert Pol, Angelo Salese (the two table lines `provenance_check.py` matched are facts; the notice is kept anyway) |
+| `arcade.py` | NOTICE.md: MAME `src/devices/bus/pce/pce_acard.cpp`, BSD-3-Clause, copyright Fabio Priuli, Angelo Salese |
+| `seek.py` | SPDX header and a line naming Shadoff's MIT notice (already in NOTICE.md) |
+| every Python file, `pyproject.toml`, `NOTICE.md` | SPDX headers where missing |
+| scripts and slow tests | the System Card is named by `$PCE_SYSTEM_CARD` and the base board's checkout defaults to the sibling `../pcengine-python`: no machine path left in code (house rule; the audit's note above). Some older records under `docs/` still name paths as history |

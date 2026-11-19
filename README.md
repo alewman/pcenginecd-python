@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 # pcenginecd-python
 
 A readable, pure-Python **PC Engine CD-ROM² / Super CD-ROM²** (1988-1991), built as an **add-on to
@@ -27,7 +28,9 @@ python -m venv .venv-pypy   # PyPy 3.11 is the platform; CPython works for the t
 .venv-pypy/bin/python -m pytest -q
 ```
 
-The base board is pinned by git revision in `pyproject.toml` (github.com/alewman/pcengine-python); `docs/start-here.md`
+The base board is pinned by git revision in `pyproject.toml` (github.com/alewman/pcengine-python;
+on `main` now 3318027, its clean rewrite of 2026-11-19, not yet pushed: install it from a local
+clone as [docs/restart.md](docs/restart.md) says); `docs/start-here.md`
 says which sockets are used and what the base board does not do for an add-on. The System Card is
 **bring-your-own**, read in place by path, and discs are read in place (bin/cue) or expanded by
 `chdman extractcd` into a scratch directory: nothing of either is ever committed.
@@ -42,11 +45,13 @@ for _ in range(900):
 rows = cd.board.capture.last_frame.rows  # 242 rows of 9-bit palette values
 ```
 
-Third-party notice: the seek-time model derives from Dave Shadoff's MIT-licensed measurements
-([NOTICE.md](NOTICE.md)).
+Third-party notices: the seek-time model derives from Dave Shadoff's MIT-licensed measurements,
+and a few facts (Super System Card id bytes, the MSM5205 step formula, drive and Arcade Card
+details) are MAME's, BSD-3-Clause ([NOTICE.md](NOTICE.md)).
 
 Save states: `pcengine_python.state.save_state(system)` and `load_state`
-([docs/start-here.md](docs/start-here.md) "Save states"; the disc is named, not stored). Paths
-under `/data/emu/` in the documents and the scripts' defaults (the library, the System Card at
-`/data/emu/share/batocera/bios/syscard3.pce`, the base board's checkout as `PCENGINE_PYTHON`) are
-the author's machine: the System Card and every disc are bring-your-own.
+([docs/start-here.md](docs/start-here.md) "Save states"; the disc is named, not stored). The
+System Card and every disc are bring-your-own: the scripts and slow tests take the card from
+`$PCE_SYSTEM_CARD` (or `--system-card`), discs by path, and the base board's checkout from
+`$PCENGINE_PYTHON` (default the sibling `../pcengine-python`). Older records under `docs/` name
+the author's paths as history.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Save states on the CD machine: a run saved and loaded continues as the run that wasn't.
 
     .venv-pypy/bin/python scripts/cd_state.py DISC.cue [--arcade] [--at 900] [--to 960]
@@ -22,12 +23,14 @@ from pcengine_python import pads
 
 from pcenginecd_python import Disc, PcEngineCd
 
-BASE = Path(os.environ.get("PCENGINE_PYTHON", "/data/emu/pcengine-python"))
+BASE = Path(
+    os.environ.get("PCENGINE_PYTHON", Path(__file__).resolve().parents[2] / "pcengine-python")
+)
 sys.path.insert(0, str(BASE / "scripts"))
 import presses as press_script  # noqa: E402
 from state_roundtrip import roundtrip  # noqa: E402
 
-DEFAULT_CARD = "/data/emu/share/batocera/bios/syscard3.pce"
+DEFAULT_CARD = os.environ.get("PCE_SYSTEM_CARD", "syscard3.pce")  # the player's own image
 
 
 def main() -> int:

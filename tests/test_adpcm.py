@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The ADPCM unit from the register semantics of pcetech 8, the Hudson BIOS routines (AD_STAT,
 AD_PLAY, the `ad_*_addr_set` helpers) and the MSM5205 decoder. Directed tests, no emulator."""
 

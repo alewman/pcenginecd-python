@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The CD-ROM² / Super CD-ROM² machine: the pinned PC Engine board plus a System Card and a CD unit.
 
 Composition through the base board's sockets (docs/start-here.md):

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The disc model: LBA/MSF, tracks from a cue, data sectors, chdman's cue shape."""
 
 from discs import audio_sectors, data_sector, disc_audio_then_data, disc_data_only, numbered_data
