@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The Arcade Card: 2 MiB of RAM behind four address ports, and a 32-bit shift/rotate unit.
 
 An Arcade Card (Hudson, 1994) sits on the same EXT BUS as the CD unit; here it is a component of
@@ -5,13 +6,13 @@ An Arcade Card (Hudson, 1994) sits on the same EXT BUS as the CD unit; here it i
 clock: every access is immediate, so it takes no part in `catch_up`.
 
 Sources, and what is tier what. **No hardware documentation of the card is in `reference/`**: the
-card is not in MacDonald's `pcetech.txt`, and the only text the sources cite for it is Mednafen's
-header ("based on information provided by Ki and David Shadoff"). So every behaviour below is
-[emu: Mednafen `arcade_card.cpp`, Geargrafx `arcade_card_mapper*`, Mesen2 `PceArcadeCard.cpp`]
-(tier 5, detectors) and holds where **all three agree**; where they differ the choice is a named
-class attribute and a U/C entry in docs/m9-record.md.
+card is not in MacDonald's `pcetech.txt`. Every behaviour below is emulator tier, from the readable,
+permissively licensed sources: MAME `bus/pce/pce_acard.cpp` (BSD-3-Clause) and ares's Arcade Card
+boards (ISC), facts only, no code ported (docs/arcade-sources.md); Mednafen, Geargrafx and Mesen2
+(GPL) run as closed boxes agree on the discs (docs/m9-record.md). Where sources differ the choice is
+a named class attribute and a U/C entry in docs/m9-record.md.
 
-Address map [emu, all three]:
+Address map [emulator tier: MAME, ares]:
 
 | where | what |
 | --- | --- |
@@ -62,18 +63,17 @@ TRIGGER_NONE, TRIGGER_LOW, TRIGGER_HIGH, TRIGGER_REG_A = 0, 1, 2, 3
 class ArcadeCard:
     """The card's RAM, four ports and the shift unit."""
 
-    # [emu: Mednafen, Geargrafx $FF; Mesen2 returns the open bus] a read of a decoded address the
+    # [emulator tier: MAME $FF; ares the open bus; a choice] a read of a decoded address the
     # card has no register at ($1A0B-$1A0F per port group, $1A80-$1ADF, $1AE6-$1AFD, $1B00-$1BFF)
     UNMAPPED_READ = 0xFF
-    # [emu: Mednafen, Geargrafx mask to 4 bits; Mesen2 returns the byte written] $1AE4 / $1AE5 reads
+    # [emulator tier: MAME and ares keep 4 bits] $1AE4 / $1AE5 reads
     SHIFT_READ_MASK = 0x0F
-    # [emu: Mesen2, Geargrafx read 0; Mednafen falls through to $FF] port register $A on a read
+    # [emulator tier: MAME $FF, ares the open bus; 0 kept, a choice] port register $A on a read
     TRIGGER_REG_READ = 0x00
-    # [emu: Mednafen zeroes the RAM at power-up; Mesen2 uses its configurable random fill] the real
-    # RAM is unspecified (U7 again)
+    # Power-up RAM: zero, a choice; the real RAM is unspecified (U7 again)
     POWER_ON_RAM_BYTE = 0x00
-    # [emu: Geargrafx clears the ports and the shift unit on reset; Mednafen has no reset, Mesen2
-    # none visible] a warm reset leaves the registers alone unless this is True
+    # [emulator tier: MAME and ares clear on a machine reset, not the CD's warm reset; a choice]
+    # a warm reset leaves the registers alone unless this is True
     RESET_CLEARS_REGISTERS = False
 
     def __init__(self) -> None:
@@ -188,7 +188,7 @@ class ArcadeCard:
         if n == 0x1C or n == 0x1D:
             return 0x00
         if n == 0x1E:
-            return 0x10  # version [emu: all three; Mednafen: "we should verify this"]
+            return 0x10  # version [emulator tier: MAME, ares]
         if n == 0x1F:
             return 0x51  # ID
         return self.UNMAPPED_READ

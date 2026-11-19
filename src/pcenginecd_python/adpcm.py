@@ -1,12 +1,14 @@
+# SPDX-License-Identifier: MIT
 """The ADPCM unit: 64 KiB of RAM, its pointers, the MSM5205 decoder and the audio source.
 
 Tiers (the base board's docs/validation.md): [hw: pcetech 8] MacDonald, tier 2, names the registers
 and a few bit meanings and says the rest is "currently trying to document"; [mfr: Hudson BIOS manual
 and System Card ROM] tier 3, the BIOS source (`AD_STAT`, `AD_PLAY`, `ad_*_addr_set` in
-`Super CD-ROM2 System V3.00 (J).ASM`) shows how the registers are driven; [emu] Mesen2
-`PceAdpcm.cpp`, Geargrafx `adpcm*.cpp`, Mednafen `pcecd.cpp` and MAME `pce_cd.cpp` are tier 5
-detectors: where a behaviour comes only from them it is a class attribute below (a named switch)
-with a U/C entry in docs/m8-record.md.
+`Super CD-ROM2 System V3.00 (J).ASM`) shows how the registers are driven; [emu] Mesen2,
+Geargrafx and Mednafen (GPL: their behaviour is reported in docs/m8-record.md, they are run as
+closed boxes) and MAME `nec/pce_cd.cpp` (BSD-3) are tier 5 detectors: where a behaviour comes
+only from them it is a class attribute below (a named switch) with a U/C entry in
+docs/m8-record.md.
 
 Registers (offsets from `$1800`):
 
@@ -55,8 +57,8 @@ INDEX_STEP = (-1, -1, -1, -1, 2, 4, 6, 8)
 
 
 def _step_table() -> tuple[int, ...]:
-    """`DELTA[index * 8 + magnitude]`, the signal change for a 3-bit magnitude [MSM5205 data sheet
-    as modelled by MAME `msm5205.cpp`, Mednafen `okiadpcm.cpp`, Geargrafx: tier 3/5]."""
+    """`DELTA[index * 8 + magnitude]`, the signal change for a 3-bit magnitude [the MSM5205's
+    step formula as modelled by MAME `sound/msm5205.cpp` (BSD-3-Clause): emulator tier]."""
     steps = [int(16 * 1.1**index) for index in range(49)]
     return tuple(
         step // 8
@@ -84,14 +86,14 @@ class Adpcm:
     # cycles in high-speed mode"] 24 CPU cycles x 3. Mednafen: 57 clocks; Mesen2: a RAM slot model
     # (30 cycles minimum, 32 safe); 0 = immediate.
     READ_CLOCKS: ClassVar[int] = 24 * 3
-    # The same for a `$180A` write (bit 2). [emu: Mesen2: 22 cycles minimum, 24 safe; Mednafen 33
-    # clocks] pcetech: the BIOS polls bit 2 after each write, no time given.
+    # The same for a `$180A` write (bit 2): pcetech says the BIOS polls bit 2 after each write but
+    # gives no time; the read's 24 cycles are used, a choice (ares estimates 20 for both).
     WRITE_CLOCKS: ClassVar[int] = 24 * 3
     # The 12-bit signal saturates at -2048..2047 (MAME's MSM5205 model) or wraps (Mesen2,
     # Geargrafx).
     SATURATE: ClassVar[bool] = True
-    # 16-bit output per signal unit. 16 would be full scale; Mesen2 and Geargrafx use 10 (headroom
-    # for the PSG and CD-DA). Tier 5.
+    # 16-bit output per signal unit. 16 would be full scale; 10 leaves headroom for the PSG and
+    # CD-DA (a choice, as reported of other emulators in docs/m8-record.md U9d). Tier 5.
     OUTPUT_SCALE: ClassVar[int] = 10
     # A write to RAM while the length is zero raises the end flag [emu: Mesen2, Geargrafx]; the
     # BIOS clears it with the length latch afterwards. Mednafen has no such rule.

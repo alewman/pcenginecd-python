@@ -69,11 +69,11 @@ s a frame), 1.4 s a frame at load average 45. A reference board, not a fast one.
 
 | Id | Entry | Sources and tier | Built as |
 | --- | --- | --- | --- |
-| U8 | Drive timings: SEL to command phase 25,000 ticks, TEST UNIT READY 150,000 ticks (about 100x shorter than real), TOC 3,000, status 1,000, abort 300,000, ACK pulse 21 clocks; a tick is 3 master clocks | Mesen2 comments citing test ROMs on hardware (tier 5, claimed) | `ScsiBus` class attributes `SEL_TO_COMMAND_PHASE`, `TEST_UNIT_READY`, ...; each counts from the register access that starts it (until issue 0001, 2026-11-13, from the drive's last event while another was pending) |
+| U8 | Drive timings (**replaced 2026-11-19**, docs/restart.md): the withdrawn values came from a GPL emulator's code and are not repeated here. Now closed-box measurements of Geargrafx 57c257d (`scripts/drive_probe.py`): SEL to command phase 74,940 clocks, command byte to the next REQ 3,030, TEST UNIT READY 449,565, READ TOC 9,015, READ SUBQ 3,030, last data byte to status 3,030, status to message 1,500, message to bus free 1,500; the auto-ACK 45 clocks (MAME, BSD-3) | closed box (emulator tier), MAME | `ScsiBus` class attributes; each counts from the register access that starts it (issue 0001) |
 | U8 | Sector rate: one sector's bytes every 286,363 clocks (75 a second) | Red Book rate, tier 2-3; the delivery phase relative to the READ is undecidable | `ScsiBus.SECTOR_CLOCKS` |
-| U8 | Re-read after a missed sector: 290 ms | Mesen2 (Sherlock Holmes), tier 5 | `REREAD_PENALTY_MS` |
-| U8 | `$1805` second write within 700 clocks ignored | Mesen2 test ROM, tier 5 | `CdUnit.CHANNEL_LATCH_GUARD` |
-| U8 | CD-to-ADPCM DMA takes a byte 60 clocks after REQ | Mesen2 "verificator" ROM (18-22 ticks pass), tier 5 | `CdUnit.DMA_BYTE_CLOCKS` |
+| U8 | Re-read after a missed sector: 290 ms after its turn | closed box (Geargrafx 57c257d, 2026-11-19), emulator tier | `REREAD_PENALTY_MS` |
+| U8 | `$1805` second write within 700 clocks ignored | closed box (Geargrafx: in (675, 735]), and a test-ROM report by Mesen2's author; emulator tier | `CdUnit.CHANNEL_LATCH_GUARD` |
+| U8 | CD-to-ADPCM DMA takes a byte 60 clocks after REQ | a test-ROM report by Mesen2's author (18-22 CPU cycles pass), emulator tier; the closed box takes one every 90 clocks (open) | `CdUnit.DMA_BYTE_CLOCKS` |
 | C20 | Seek model: Shadoff's zones and steps; his `seektime.c` makes the `< 2` case dead code (9 VSYNC + half a rotation for 0-4); Mesen2 uses older numbers (18 VSYNC for short seeks) | measurements on re-capped hardware, tier 3 | `seek.py` (the code as written) |
 | U9 | Audio: no subchannel Q stream (`$1807` reads 0, IRQ bit 0x10 never), no DAC filter, fade linear 8 s / 2 s (Mesen2: 6 s / 2.5 s; MAME "sketchy") | pcetech tier 2 for the times; shape undecidable | `CddaPlayer.FADE_*` |
 | U9 | ADPCM: RAM port, pointers, DMA done; **no playback, length, half/end flags or IRQs** (the Pyramid Plunder block); `$180C` always reads idle | pcetech "currently trying to document", MAME TODO | done in M8 ([m8-record.md](m8-record.md)) |
@@ -100,3 +100,11 @@ The tier-4 "CD Unit SCH.pdf" (a community redraw) was not read in this run; noth
 - (Then) no push, no remote, and `pyproject.toml` pinned `git+file://`; since 2026-11-11 the repository is on GitHub, pins the base board's GitHub commit, and CI runs.
 
 **Rerun 2026-11-13 (issue 0001, the drive's clock at register accesses):** Addams Family, Insanity and Pyramid Plunder rerun before and after, same commands as above; see [issues/0001](issues/0001-findings-from-the-rust-port.md) "The discs, before and after".
+
+**2026-11-19, the clean rewrite** ([restart.md](restart.md)): `scsi.py` was replaced, and the names
+of its internals in the table above (`ScsiBus._...`, `TOC_ANSWER_BYTES`) are the withdrawn module's.
+The decisions stand with new sources: C14 (REQUEST SENSE: SCSI-1's extended sense, 18 bytes), C15
+(READ TOC lengths 2, 3, 4: MAME, BSD-3; the closed box sends 4 each), C18 (READ of 0 sectors: MAME and
+ares), C19 (AUDIO START busy until the seek ends: the Hudson manual's CD_SEARCH and the closed box),
+C22 (an unknown opcode: GOOD, closed box). The GPL emulators named in this table's sources column
+were consulted as code before the rewrite; their entries now stand only as reported behaviour.

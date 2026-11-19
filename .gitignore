@@ -32,3 +32,6 @@ tests/runs/
 *.pkl
 *.png
 error.log
+
+# Withdrawn code moved aside during the clean rewrite (docs/restart.md): never read, never committed.
+scratch/

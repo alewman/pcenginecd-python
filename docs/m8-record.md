@@ -14,7 +14,7 @@ Tiers are those of the base board's [validation.md](https://github.com/alewman/p
   the CD-to-ADPCM DMA through the same write path as `$180A`.
 - The decoder: a 12-bit signal and an index 0-48 (step = floor(16 * 1.1^index); delta = step/8 + b0 step/4
   + b1 step/2 + b2 step; index moves -1 -1 -1 -1 +2 +4 +6 +8), high nibble first. The 392-entry delta table
-  equals Mesen2's `_stepSize` table (checked by script, not copied).
+  agrees with the step formula of MAME's `sound/msm5205.cpp` (BSD-3-Clause).
 - Sources, in order of weight: [hw: pcetech 8] register names, `$180E` rate `32/(16-n)` kHz, buffered
   reads, "less than half" for `$1803` bit 2, `$180C` bits, the busy time of about 24 cycles (tier 2);
   [mfr: Hudson BIOS manual and the System Card ROM] `AD_STAT` (reads `$180C` bit 0, `$1803` bit 2, `$180D`

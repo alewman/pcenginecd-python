@@ -1,10 +1,12 @@
+# SPDX-License-Identifier: MIT
 """The disc: a track table and sectors, from a bin/cue pair, a CHD (through `chdman`), or memory.
 
 Addresses. A sector's **LBA** is its index in the disc image: LBA 0 is the first stored sector,
 which is absolute time 00:02:00 (the two-second lead-in gap is not stored). So `msf = lba + 150`
 frames. The SCSI READ command and every track start in this module are in this LBA, and the
-`READ TOC` answers are MSF = LBA + 150 [doc: pcetech 8; emu: Mesen2 `PceScsiBus.cpp`, Geargrafx
-`cdrom_physical_image.cpp` read absolute image sectors]. A raw sector is 2352 bytes; a Mode 1 data
+`READ TOC` answers are MSF = LBA + 150 [doc: pcetech 8; the Hudson BIOS manual's CD_DINFO; emulator
+tier: MAME `nec/pce_cd.cpp` (BSD-3) adds 150; OBSERVED, closed box: Geargrafx answers a track at
+LBA 40 with 00:02:40]. A raw sector is 2352 bytes; a Mode 1 data
 sector keeps its 2048 payload bytes at +16 (12 sync, 4 header).
 
 Nothing is committed: images are read in place, a CHD is expanded by `chdman extractcd` into a

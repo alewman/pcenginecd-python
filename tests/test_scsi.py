@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The drive's bus and command set through the registers, as the BIOS drives them."""
 
 from discs import disc_audio_then_data, disc_data_only
@@ -142,10 +143,35 @@ def test_reset_through_1804_aborts_everything():
     assert h.r(0) == 0 and h.unit.bus.phase.value == "bus free"
 
 
-def test_selecting_during_data_in_aborts_with_an_eight_byte_message():
+def test_selecting_during_data_in_aborts_with_eight_status_bytes_then_the_message():
+    # Closed-box Geargrafx (scripts/drive_probe.py): SEL in data in gives the status phase at once,
+    # eight REQs carrying GOOD, then the message, then bus free; the BIOS takes REQs until BSY
+    # drops. (The withdrawn test looked at the old model's buffer instead.)
     h = host(disc_data_only())
     h.command([8, 0, 0, 1, 1, 0])
     h.wait(0xC8)
     h.select()
-    assert h.unit.bus.phase.value == "status"
-    assert len(h.unit.bus.out) == 8
+    assert h.unit.bus.phase.value == "status" and h.r(0) & 0xF8 == 0xD8
+    offered = []
+    while h.r(0) & 0x80:
+        if h.r(0) & 0x40:
+            offered.append((h.r(0) & 0xF8, h.r(1)))
+            h.handshake()
+        else:
+            h.advance(500)
+    assert offered == [(0xD8, 0)] * 8 + [(0xF8, 0)]
+    data, status = h.run([8, 0, 0, 2, 1, 0], 2048, via=8)  # the drive works after the abort
+    assert data[0] == 2 and status == (0, 0)
+
+
+def test_audio_end_repeat_of_an_empty_range_plays_nothing_and_stays_busy():
+    # MAME's note (an end before the start plays nothing) and the closed box (BSY alone after a
+    # repeat): the drive stays busy until the next selection, and nothing loops.
+    h = host(disc_audio_then_data(40, 20))
+    h.command([0xD8, 1, to_bcd(3), 0, 0, 0, 0, 0, 0, 0x80])  # start at track 3, play
+    h.finish()
+    h.command([0xD9, 1, to_bcd(2), 0, 0, 0, 0, 0, 0, 0x80])  # repeat up to track 2: empty
+    h.advance(MASTER_HZ // 10)
+    assert h.r(0) & 0xF8 == 0x80 and not h.unit.cdda.active
+    _, status = h.run([0, 0, 0, 0, 0, 0])  # the next selection is served
+    assert status == (0, 0)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The CD unit: the expansion-port device that owns `$1800-$18FF`, CD RAM and the backup RAM.
 
 It plugs into the base board's socket 2 (`PortDevice`): `claims()` lists the pages, every access
@@ -57,20 +58,26 @@ IRQ_SUBCODE = 0x10
 IRQ_STATUS_MESSAGE = 0x20
 IRQ_DATA_IN = 0x40
 
-# [emu: Mesen2 `PceCdRom.cpp`] the BRAM the BIOS leaves after "initialise": a header, rest zero.
-# The real RAM is battery-backed and its content at an owner's first power-up is unknown (U36);
-# unformatted RAM makes some games (Far East of Eden) misbehave [emu: Mesen2 comment].
+# The BRAM as the BIOS leaves it after formatting: its "HUBM" header (a fact of the BIOS's data
+# format, BM_FORMAT), the rest zero. The real RAM is battery-backed and its content at an owner's
+# first power-up is unknown (U36); a formatted-empty RAM is a choice (Mesen2's author reports that
+# unformatted RAM upsets Far East of Eden: a report, emulator tier).
 BRAM_FORMATTED = bytes([0x48, 0x55, 0x42, 0x4D, 0x00, 0xA0, 0x10, 0x80])
 
 
 class CdUnit:
     """CD RAM, backup RAM, the registers, the SCSI bus and the CD-DA player."""
 
-    # [emu: Mesen2 `PceCdRom.cpp`, from its test ROMs] a second write to $1805 within this many
-    # master clocks of the first is ignored (tier 5)
+    # A second write to $1805 within this many master clocks of the first is ignored. [OBSERVED:
+    # closed box, Geargrafx 57c257d through scripts/drive_probe.py: writes 225 CPU cycles apart do
+    # not toggle $1803 bit 1, 245 apart do, so the guard is in (675, 735]; Mesen2's author reports
+    # a guard from test ROMs (a report, emulator tier)] Provisional.
     CHANNEL_LATCH_GUARD = 700
-    # [emu: Mesen2 `PceAdpcm.cpp`, "verificator" test ROM: values 18 to 22 CPU-ticks pass, higher
-    # or lower fail; one tick = 3 master clocks] master clocks from REQ to the DMA taking the byte
+    # Master clocks from REQ to the DMA taking the byte. [Mesen2's author reports that the
+    # "verificator" test ROM passes with 18 to 22 CPU cycles and fails outside (a report, emulator
+    # tier; the middle rule): 20 cycles.] The closed box (Geargrafx 57c257d,
+    # scripts/drive_probe.py) takes a byte every 90 clocks, which with the 45-clock auto-ACK would
+    # be 45: open (provisional).
     DMA_BYTE_CLOCKS = 20 * 3
 
     grounds_cd = False  # the unit is not a card: the System Card grounds /CD
@@ -213,7 +220,7 @@ class CdUnit:
             self._dma_at = at + 3  # the RAM is still taking the last byte: ask again
             return
         bus.pulse_ack()
-        if not bus.out:
+        if not bus.data_waiting:
             adpcm.dma &= ~0x01  # the sector is through (bit 1, the request, stays until cleared)
 
     # -- IRQ2 ------------------------------------------------------------------------------------
@@ -332,8 +339,10 @@ class CdUnit:
         elif reg == 0x07:
             self.bram_locked = not value & 0x80
         elif 0x08 <= reg <= 0x0E:
-            if reg == 0x0B and not bus.out:
-                value &= ~0x01  # bit 0 cannot be set when no data block is waiting [emu: Mesen2]
+            if reg == 0x0B and not bus.data_waiting:
+                # bit 0 cannot be set when no data block is waiting [OBSERVED: closed box,
+                # Geargrafx 57c257d reads $03 written back as $02; provisional]
+                value &= ~0x01
             self.adpcm.write(reg, value, mclk)
         elif reg == 0x0F:
             self.cdda.write_fade(value, mclk)

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """CD-DA: the audio player behind `AUDIO START/END/PAUSE`, `READ SUBQ`, `$1805-$1806` and the
 audio source the board mixes.
 
@@ -7,11 +8,10 @@ often the host asks for samples. 44,100 stereo samples a second, 588 per 2352-by
 sectors a second [hw: Red Book]. Samples are signed 16-bit little-endian pairs.
 
 What is not modelled (U9): the drive's subchannel Q stream (the BIOS's `$1807` read and its IRQ
-bit 0x10), the DAC's filtering (Mednafen filters, Mesen2 resamples with a Hermite kernel), and the
+bit 0x10), the DAC's filtering (emulators differ; none is followed), and the
 real fader curve: the times are the Hudson BIOS manual's 6 s / 2.5 s (tier 3; pcetech's tier-2
 "about 8 seconds" / "about 2 seconds" is the `PCETECH_FADE` switch) and the shape between is linear
-here (Mesen2 fades 1% per 60 ms / 25 ms, i.e. 6 s / 2.5 s; MAME
-calls its own fader "sketchy and unchecked against real HW").
+here (MAME calls its own fader "sketchy and unchecked against real HW").
 """
 
 from __future__ import annotations
@@ -42,15 +42,16 @@ class EndMode(enum.IntEnum):
 
 
 class CddaPlayer:
-    # [emu: Mednafen `DoNEC_PCE_READSUBQ`, tier 5] the audio-status byte of READ SUBQ
+    # The audio-status byte of READ SUBQ [DOC: Hudson BIOS manual CD_SUBQ: $00 playing, $01 still,
+    # $02 pause, $03 not playing; a seek reads as not playing, a choice]
     SUBQ_STATUS: ClassVar[dict[Status, int]] = {
         Status.PLAYING: 0,
         Status.PAUSED: 2,
         Status.STOPPED: 3,
         Status.SEEKING: 3,
     }
-    # Fade times, linear. Default: [mfr: Hudson BIOS manual CD_FADE "6.0 s / 2.5 s", tier 3; Mesen2
-    # and Mednafen agree, tier 5]. The manufacturer's manual outranks pcetech's research text.
+    # Fade times, linear. Default: [mfr: Hudson BIOS manual CD_FADE "6.0 s / 2.5 s", tier 3; ares
+    # (ISC) uses the same times]. The manufacturer's manual outranks pcetech's research text.
     # Switch: `PCETECH_FADE = True` selects [hw: pcetech 8] "silence in about 8 seconds" (value 8-9)
     # and "about 2 seconds" (C-D), tier 2.
     FADE_SLOW_SECONDS = 6.0
@@ -87,6 +88,11 @@ class CddaPlayer:
     @property
     def status_code(self) -> int:
         return self.SUBQ_STATUS[self.status]
+
+    @property
+    def start(self) -> int:
+        """Where the last AUDIO START put the head: where a repeat goes back to."""
+        return self._start
 
     @property
     def position(self) -> int:
