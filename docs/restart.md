@@ -88,7 +88,7 @@ GitHub as usual, and until Aubrey pushes both, the venvs are installed from the 
 for v in .venv-pypy .venv; do
   $v/bin/python -m pip install --force-reinstall --no-deps \
     "git+file://$PWD/../huc6280-python@6ce348e13c9ef3009bd07e7938c4b48956eeadc6" \
-    "git+file://$PWD/../pcengine-python@3318027e5c34f1e211515f95233a0853938a5f53"
+    "git+file://$PWD/../pcengine-python@03ac6998c812a291e5f91882552df5ae712ba870"
 done
 ```
 
@@ -132,3 +132,14 @@ board's changes through its pcengine-rust pin (pcengine-python `docs/restart.md`
 transcription must carry"). Comments and headers only otherwise: SPDX headers, the NOTICE.md
 entries for MAME's BSD-3 files, and `$PCE_SYSTEM_CARD` in the scripts and slow tests in place of
 a machine path.
+
+## Repin to pcengine-python 03ac699 (2026-11-19)
+
+The base board's `03ac699` (local, not pushed) crops a display that starts before the row (a small
+HDS put the display start inside the sync and the row grew from 341 to 682 dots; found by
+supergrafx-rust on its probe card). The venvs were reinstalled from the local clone at that hash
+(the command above). Judges after: quick suite 104 passed (PyPy and CPython); slow System Card
+boot and the save state taken while the BIOS reads, 2 passed. The disc boots were not rerun: the
+fix touches only a line whose display starts before the row, which no System Card or disc run
+here has been seen to reach (the base board's library re-check found which HuCards do: its
+`docs/restart.md`). Nothing in this add-on changed.
