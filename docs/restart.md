@@ -133,9 +133,14 @@ transcription must carry"). Comments and headers only otherwise: SPDX headers, t
 entries for MAME's BSD-3 files, and `$PCE_SYSTEM_CARD` in the scripts and slow tests in place of
 a machine path.
 
+**Pushed (2026-11-20).** Both commits are on GitHub now, and a plain `pip install -e ".[dev]"`
+installs the pins from there (checked in a fresh PyPy venv). The local-clone command above
+installed the core with `--no-deps`, which leaves out its own dependency, 6502-python (2146eba);
+it worked only in venvs that already had it.
+
 ## Repin to pcengine-python 03ac699 (2026-11-19)
 
-The base board's `03ac699` (local, not pushed) crops a display that starts before the row (a small
+The base board's `03ac699` (local then, on GitHub since 2026-11-20) crops a display that starts before the row (a small
 HDS put the display start inside the sync and the row grew from 341 to 682 dots; found by
 supergrafx-rust on its probe card). The venvs were reinstalled from the local clone at that hash
 (the command above). Judges after: quick suite 104 passed (PyPy and CPython); slow System Card
