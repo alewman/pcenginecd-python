@@ -1,0 +1,58 @@
+<!-- SPDX-License-Identifier: MIT -->
+# pcenginecd-python
+
+A readable, pure-Python **PC Engine CD-ROM² / Super CD-ROM²** (1988-1991), built as an **add-on to
+[pcengine-python](https://github.com/alewman/pcengine-python)**: the base board runs the HuC6280, the VCE, the PSG and the
+VDC; this repository adds what the CD set has beyond a PC Engine, through the base board's
+documented sockets and nothing copied: the **System Card** (a HuCard holding the BIOS, with the
+Super System Card's 192 KiB of RAM and id registers), the **CD unit** (64 KiB CD RAM, 2 KiB backup
+RAM, the `$1800-$180F` interface), the drive's **SCSI-class controller** (bus phases, REQ/ACK
+handshake, the System Card's command set), the **track table** from bin/cue (or a CHD through
+`chdman`) and **CD-DA** playback to the board's audio list.
+
+**Status (2026-11-12, release 0.1.0): built (milestones 7 to 9 of the PC Engine family).** The
+Super System Card boots; the discs tried boot, compared with the detectors as the m7 and m8 records say; the
+three Arcade Card discs in the library all boot and match Geargrafx at the frames compared
+(2026-11-09); save states are the base board's and cover this machine. What was compared is first
+screens and openings, mostly by eye: no disc was played through, and nothing here was run on a
+real console. See [CHANGELOG.md](CHANGELOG.md),
+[docs/m9-record.md](docs/m9-record.md) for the Arcade Card, [docs/m8-record.md](docs/m8-record.md) for the ADPCM unit, the judges and the U/C entries,
+[docs/m7-record.md](docs/m7-record.md) for the CD unit core and [docs/m7-plan.md](docs/m7-plan.md) for
+the plan M7 was built from. The subchannel Q stream is **not built**. The Arcade Card is
+`PcEngineCd(..., arcade_card=True)`.
+Python floor 3.11 (PyPy supports it); this is a reference board, correct, not fast.
+
+```sh
+python -m venv .venv-pypy   # PyPy 3.11 is the platform; CPython works for the tests
+.venv-pypy/bin/python -m pip install -e ".[dev]"
+.venv-pypy/bin/python -m pytest -q
+```
+
+The base board is pinned by git revision in `pyproject.toml` (github.com/alewman/pcengine-python;
+on `main` now 03ac699, its clean rewrite of 2026-11-19 (3318027) and the crop of a display
+that starts before the row, not yet pushed: install it from a local
+clone as [docs/restart.md](docs/restart.md) says); `docs/start-here.md`
+says which sockets are used and what the base board does not do for an add-on. The System Card is
+**bring-your-own**, read in place by path, and discs are read in place (bin/cue) or expanded by
+`chdman extractcd` into a scratch directory: nothing of either is ever committed.
+
+```python
+from pcenginecd_python import Disc, PcEngineCd
+
+cd = PcEngineCd("syscard3.pce", Disc.from_cue("game.cue"))
+system = cd.build()  # the real HuC6280 core on the board
+for _ in range(900):
+    system.run_frame()
+rows = cd.board.capture.last_frame.rows  # 242 rows of 9-bit palette values
+```
+
+Third-party notices: the seek-time model derives from Dave Shadoff's MIT-licensed measurements,
+and a few facts (Super System Card id bytes, the MSM5205 step formula, drive and Arcade Card
+details) are MAME's, BSD-3-Clause ([NOTICE.md](NOTICE.md)).
+
+Save states: `pcengine_python.state.save_state(system)` and `load_state`
+([docs/start-here.md](docs/start-here.md) "Save states"; the disc is named, not stored). The
+System Card and every disc are bring-your-own: the scripts and slow tests take the card from
+`$PCE_SYSTEM_CARD` (or `--system-card`), discs by path, and the base board's checkout from
+`$PCENGINE_PYTHON` (default the sibling `../pcengine-python`). Older records under `docs/` name
+the author's paths as history.

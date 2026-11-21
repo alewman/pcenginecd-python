@@ -1,0 +1,37 @@
+# Python and package builds
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments and tooling
+.venv/
+.venv-*/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# System Cards, HuCards and discs are bring-your-own, read in place: never commit one.
+*.pce
+*.sgx
+*.bin
+*.rom
+*.7z
+*.chd
+*.cue
+*.iso
+*.img
+*.zip
+
+# Oracle runs (scripts/cd_boot.py): pictures, pickles, MAME output.
+runs/
+tests/runs/
+*.pkl
+*.png
+error.log
+
+# Withdrawn code moved aside during the clean rewrite (docs/restart.md): never read, never committed.
+scratch/
