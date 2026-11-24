@@ -88,8 +88,8 @@ master-clock time), and the 9-bit rows of the three pictures.
 | The Addams Family | 18 / 18 | 533,755 / 533,755 (1 end) | identical | The 8 READs issued while ADPCM plays (from frame 1249) are logged 1,194-1,227 master clocks later. That is less than one 16 kHz sample period, the most the old clock could lag behind while the sample clock was pending |
 | Insanity | 10 / 10 | 0 / 0 | identical | nothing (the BIOS leaves the bus BUSY in its audio commands, as before) |
 
-**Geargrafx** (`scripts/beetle_press.py --core
-/data/emu/pcengine-python/reference/src/geargrafx/platforms/libretro/geargrafx_libretro.so`, the CHD
+**Geargrafx** (`scripts/beetle_press.py --core` with the core pcengine-python built, now at its
+`reference/build-geargrafx/geargrafx_libretro.so` since 2026-11-24, the CHD
 read in place, the same press) was rerun on **Mad Stalker** at frames 1000, 2000 and 3000. It shows
 the same scenes as ours: the mechs and "NOW LOADING 02" at 2000, the car/figure cutscene at 3000
 (compared by eye, as in m9). It cannot count READ SUBQ polls. The change moves the add-on **closer**

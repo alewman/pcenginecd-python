@@ -36,7 +36,9 @@ def main() -> int:
         help="the libretro system directory (default: the folder of $PCE_SYSTEM_CARD)",
     )
     ap.add_argument(
-        "--core", type=Path, default=BASE / "reference/src/beetle-pce/mednafen_pce_libretro.so"
+        # pcengine-python keeps the core it built at reference/build-beetle-pce/ since
+        # 2026-11-24 (no closed-box source is fetched any more; a shipped core also works).
+        "--core", type=Path, default=BASE / "reference/build-beetle-pce/mednafen_pce_libretro.so"
     )
     a = ap.parse_args()
     spec = importlib.util.spec_from_file_location("libretro_run", BASE / "scripts/libretro_run.py")
